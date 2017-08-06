@@ -8,7 +8,9 @@ setup(
     install_requires=[
         'setuptools >= 20.2.2',
         # tensorflow or tensorflow-gpu v1.2
-        'fire'
+        'fire',
+        'numpy',
+        'amii_tf_nn'
     ],
     tests_require=['pytest', 'pytest-cov'],
     setup_requires=['pytest-runner'],

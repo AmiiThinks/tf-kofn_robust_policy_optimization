@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .probability_utils import prob_next_state
+from .probability_utils import prob_next_state, prob_state_given_action
 from amii_tf_nn.projection import l1_projection_to_simplex
 
 
@@ -23,7 +23,7 @@ class Mdp(object):
         self.horizon = horizon
 
     def num_actions(self):
-        return self.transition_model.shape[0].value
+        return self.transition_model.shape[1].value
 
     def num_states(self):
         return self.rewards.shape[0].value
@@ -39,12 +39,16 @@ class MdpState(object):
             )
         self.state_distribution = tf.Variable(initial_state_distribution)
 
-    def updated(self, strat=None, **kwargs):
+    def prob_state_given_action(self, strat):
+        return prob_state_given_action(self.state_distribution, strat)
+
+    def updated(self, strat, **kwargs):
         node = tf.assign(
             self.state_distribution,
             prob_next_state(
                 self.mdp.transition_model,
-                self.state_distribution, strat
+                self.state_distribution,
+                strat
             ),
             **kwargs
         )
@@ -54,5 +58,5 @@ class MdpState(object):
     def horizon_has_been_reached(self):
         return self.t >= self.mdp.horizon
 
-    def rewards(self):
-        return self.state_distribution * self.mdp.rewards
+    def reward(self):
+        return tf.tensordot(self.state_distribution, self.mdp.rewards, axes=1)
