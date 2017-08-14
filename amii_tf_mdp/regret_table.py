@@ -99,6 +99,10 @@ class RegretTable(object):
 
 
 class RegretTableIr(RegretTable):
+    @classmethod
+    def new_table(cls, horizon, num_states, num_actions):
+        return cls.new_ir_table(horizon, num_states, num_actions)
+
     def at_timestep(self, t):
         '''
         Returns:
@@ -111,26 +115,29 @@ class RegretTableIr(RegretTable):
             self.mdp.num_states()
         )
 
-    def update_at_timestep(self, t, inst_regrets, **kwargs):
+    def updated_at_timestep(self, t, inst_regrets, **kwargs):
         '''
         Params:
         - t: Timestep.
         - inst_regrets: Rank-2 Tensor (|S| by |A|).
 
         Returns:
-        - self, for chaining.
+        - Update node.
         '''
-        self.regrets = self.__class__.updated_regrets_at_timestep_ir(
+        return self.__class__.updated_regrets_at_timestep_ir(
             self.regrets,
             t,
             self.mdp.num_states(),
             inst_regrets,
             **kwargs
         )
-        return self
 
 
 class RegretTablePr(RegretTable):
+    @classmethod
+    def new_table(cls, horizon, num_states, num_actions):
+        return cls.new_pr_table(horizon, num_states, num_actions)
+
     def at_timestep(self, t):
         return self.__class__.regrets_at_timestep_pr(
             self.regrets,
@@ -139,8 +146,8 @@ class RegretTablePr(RegretTable):
             self.mdp.num_actions()
         )
 
-    def update_at_timestep(self, t, inst_regrets, **kwargs):
-        self.regrets = self.__class__.updated_regrets_at_timestep_pr(
+    def updated_at_timestep(self, t, inst_regrets, **kwargs):
+        return self.__class__.updated_regrets_at_timestep_pr(
             self.regrets,
             t,
             self.mdp.num_states(),
@@ -148,22 +155,23 @@ class RegretTablePr(RegretTable):
             inst_regrets,
             **kwargs
         )
-        return self
 
 
 class RegretMatchingPlusMixin(object):
-    def update_at_timestep(self, t, inst_regrets, **kwargs):
-        super(RegretMatchingPlusMixin, self).update_regrets_at_timestep(
+    def updated_at_timestep(self, t, inst_regrets, **kwargs):
+        node = super(RegretMatchingPlusMixin, self).updated_at_timestep(
             t,
             inst_regrets,
             **kwargs
         )
-        self.regrets = tf.assign(
-            self.regrets,
-            tf.maximum(0.0, self.regrets),
+        return tf.assign(
+            node,
+            tf.maximum(0.0, node),
             **kwargs
         )
-        return self
+
 
 class RegretMatchingPlusIr(RegretMatchingPlusMixin, RegretTableIr): pass
+
+
 class RegretMatchingPlusPr(RegretMatchingPlusMixin, RegretTablePr): pass
