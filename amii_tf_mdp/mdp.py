@@ -5,7 +5,7 @@ from amii_tf_nn.projection import l1_projection_to_simplex
 
 
 class Mdp(object):
-    def __init__(self, transition_model, rewards, horizon):
+    def __init__(self, transition_model, rewards):
         '''
 
         Params:
@@ -23,8 +23,6 @@ class Mdp(object):
         assert(transition_model.shape[2].value == rewards.shape[2].value)
         self.transition_model = transition_model
         self.rewards = rewards
-        assert(horizon > 0)
-        self.horizon = horizon
 
     def num_actions(self):
         return self.transition_model.shape[1].value
@@ -41,6 +39,23 @@ class Mdp(object):
             next_state,
             axes=1
         )
+
+
+class FixedHorizonMdp(Mdp):
+    @classmethod
+    def upgrade(cls, horizon, mdp, *args, **kwargs):
+        return cls(
+            horizon,
+            mdp.transition_model,
+            mdp.reward_distribution,
+            *args,
+            **kwargs
+        )
+
+    def __init__(self, horizon, *args, **kwargs):
+        super(FixedHorizonMdp, self).__init__(*args, **kwargs)
+        assert(horizon > 0)
+        self.horizon = horizon
 
 
 class MdpState(object):
@@ -68,7 +83,7 @@ class MdpState(object):
         )
         reward_distribution_node = self.mdp.reward(
             self.state_distribution,
-            state_distribution_node,
+            next_states,
             strat=strat
         )
         state_distribution_node = tf.assign(
