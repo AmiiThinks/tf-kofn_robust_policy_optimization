@@ -47,7 +47,7 @@ class FixedHorizonMdp(Mdp):
         return cls(
             horizon,
             mdp.transition_model,
-            mdp.reward_distribution,
+            mdp.rewards,
             *args,
             **kwargs
         )
