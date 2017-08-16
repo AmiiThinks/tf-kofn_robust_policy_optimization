@@ -1,5 +1,7 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
+from .sequence_utils import num_pr_sequences, num_ir_sequences, \
+    num_pr_sequences_at_timestep
 
 
 class RegretTable(object):
@@ -7,21 +9,13 @@ class RegretTable(object):
     Regret table. Rank-3 Tensor
     (|I| by |A|, where I is the player's information partition).
     '''
-
-    @staticmethod
-    def num_sequences(horizon, num_states, num_actions):
-        return int(
-            num_states * (
-                (num_states * num_actions)**(horizon + 1) - 1
-            ) / (
-                num_states * num_actions - 1
-            )
-        )
-
     @staticmethod
     def new_ir_table(horizon, num_states, num_actions):
         return tf.Variable(
-            tf.constant(0.0, shape=(horizon * num_states, num_actions))
+            tf.constant(
+                0.0,
+                shape=(num_ir_sequences(horizon, num_states), num_actions)
+            )
         )
 
     @staticmethod
@@ -30,7 +24,7 @@ class RegretTable(object):
             tf.constant(
                 0.0,
                 shape=(
-                    RegretTable.num_sequences(
+                    num_pr_sequences(
                         horizon,
                         num_states,
                         num_actions
@@ -46,8 +40,11 @@ class RegretTable(object):
 
     @staticmethod
     def regrets_at_timestep_pr(regrets, t, num_states, num_actions):
-        n = RegretTable.num_sequences(t, num_states, num_actions)
-        next_n = RegretTable.num_sequences(t + 1, num_states, num_actions)
+        if t > 0:
+            n = num_pr_sequences(t - 1, num_states, num_actions)
+        else:
+            n = 0
+        next_n = num_pr_sequences(t, num_states, num_actions)
         return regrets[n:next_n, :]
 
     @staticmethod

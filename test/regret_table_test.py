@@ -113,6 +113,7 @@ class RegretTableTest(tf.test.TestCase):
             )
 
             def num_sequences(t):
+                if t < 0: return 0
                 return num_states * (
                     (num_states * num_actions)**(t + 1) - 1
                 ) / (
@@ -132,14 +133,14 @@ class RegretTableTest(tf.test.TestCase):
                     num_actions
                 )
                 self.assertEqual(
-                    num_sequences(t + 1) - num_sequences(t),
+                    num_sequences(t) - num_sequences(t - 1),
                     patient.shape[0].value
                 )
                 self.assertEqual(num_actions, patient.shape[1].value)
                 self.assertAllEqual(
                     tf.zeros(
                         (
-                            num_sequences(t + 1) - num_sequences(t),
+                            num_sequences(t) - num_sequences(t - 1),
                             num_actions
                         )
                     ).eval(),
@@ -156,6 +157,7 @@ class RegretTableTest(tf.test.TestCase):
             )
 
             def num_sequences(t):
+                if t < 0: return 0
                 return num_states * (
                     (num_states * num_actions)**(t + 1) - 1
                 ) / (
@@ -173,8 +175,8 @@ class RegretTableTest(tf.test.TestCase):
                 num_actions,
                 tf.ones(
                     (
-                        num_sequences(updated_t + 1) -
-                        num_sequences(updated_t),
+                        num_sequences(updated_t) -
+                        num_sequences(updated_t - 1),
                         num_actions
                     )
                 )
@@ -191,7 +193,7 @@ class RegretTableTest(tf.test.TestCase):
                     num_actions
                 )
                 self.assertEqual(
-                    num_sequences(t + 1) - num_sequences(t),
+                    num_sequences(t) - num_sequences(t - 1),
                     patient.shape[0].value
                 )
                 self.assertEqual(num_actions, patient.shape[1].value)
@@ -200,8 +202,8 @@ class RegretTableTest(tf.test.TestCase):
                     self.assertAllEqual(
                         tf.ones(
                             (
-                                num_sequences(updated_t + 1) -
-                                num_sequences(updated_t),
+                                num_sequences(updated_t) -
+                                num_sequences(updated_t - 1),
                                 num_actions
                             )
                         ).eval(),
@@ -211,7 +213,7 @@ class RegretTableTest(tf.test.TestCase):
                     self.assertAllEqual(
                         tf.zeros(
                             (
-                                num_sequences(t + 1) - num_sequences(t),
+                                num_sequences(t) - num_sequences(t - 1),
                                 num_actions
                             )
                         ).eval(),
