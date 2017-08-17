@@ -1,3 +1,7 @@
+import tensorflow as tf
+from .probability_utils import prob_state_and_action
+
+
 def num_pr_sequences(horizon, num_states, num_actions):
     return int(
         num_states * (
@@ -13,3 +17,101 @@ def num_ir_sequences(horizon, num_states): return horizon * num_states
 
 def num_pr_sequences_at_timestep(t, num_states, num_actions):
     return num_states * (num_states * num_actions) ** t
+
+
+def prob_sequence_state_and_action(
+    prob_sequence_and_state,
+    strat=None,
+    num_actions=None
+):
+    '''
+    Params:
+    - prob_sequence_and_state: Rank-2 Tensor (|Seq| by |S|).
+    - [strat]: (Optional) Rank-2 Tensor (|Seq| * |S| by |A|). Defaults to all
+        ones so that every row is the probability of the state under all pure
+        strategies. Must supply the number of actions in the `num_actions`
+        parameter if `strat` is `None`.
+    - [num_actions]: (Optional) The number of actions. Only required when
+        `strat` is `None`.
+
+    Returns:
+    - Rank-3 Tensor (|Seq| by |S| by |A|). Prob of being in each sequence
+        ending in each state state and sampling each action under
+        strategy `strat`.
+    '''
+    if strat is None:
+        strat = tf.ones(
+            (
+                (
+                    prob_sequence_and_state.shape[0].value *
+                    prob_sequence_and_state.shape[1].value
+                ),
+                num_actions
+            )
+        )
+    return tf.reshape(
+        prob_state_and_action(
+            tf.reshape(prob_sequence_and_state, shape=[-1]),
+            strat=strat,
+            num_actions=num_actions
+        ),
+        shape=(
+            prob_sequence_and_state.shape[0].value,
+            prob_sequence_and_state.shape[1].value,
+            num_actions
+        )
+    )
+
+
+def prob_next_sequence_and_next_state(
+    transition_model,
+    prob_sequence_and_state,
+    strat=None,
+    num_actions=None
+):
+    '''
+    Params:
+    - prob_sequence_and_state: Rank-2 Tensor (|Seq| by |S|).
+    - [strat]: (Optional) Rank-2 Tensor (|Seq| * |S| by |A|). Defaults to all
+        ones so that every row is the probability of the state under all pure
+        strategies. Must supply the number of actions in the `num_actions`
+        parameter if `strat` is `None`.
+    - [num_actions]: (Optional) The number of actions. Only required when
+        `strat` is `None`.
+
+    Returns:
+    - Rank-2 Tensor (|NextSeq| by |S|). Prob of being in each state after
+        each of the next sequences sampling each action under strategy `strat`.
+        |NextSeq| = |Seq| * |S| * |A|.
+    '''
+    prob_sequence_state_and_action_ = prob_sequence_state_and_action(
+        prob_sequence_and_state,
+        strat=strat,
+        num_actions=num_actions
+    )
+    prob_state_action_sequence_next_state = (
+        tf.transpose(
+            tf.expand_dims(transition_model, 3),
+            [0, 1, 3, 2]
+        ) *
+        tf.expand_dims(
+            tf.transpose(prob_sequence_state_and_action_, [1, 2, 0]),
+            3
+        )
+    )
+    prob_sequence_state_action_next_state = tf.transpose(
+        prob_state_action_sequence_next_state,
+        [2, 0, 1, 3]
+    )
+    num_next_sequences = (
+        prob_sequence_state_action_next_state.shape[0].value *
+        prob_sequence_state_action_next_state.shape[1].value *
+        prob_sequence_state_action_next_state.shape[2].value
+    )
+    return tf.reshape(
+        prob_sequence_state_action_next_state,
+        shape=(
+            num_next_sequences,
+            prob_sequence_state_action_next_state.shape[-1].value
+        )
+    )
