@@ -1,7 +1,6 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
-from .sequence_utils import num_pr_sequences, num_ir_sequences, \
-    num_pr_sequences_at_timestep
+from .sequence_utils import num_pr_sequences, num_ir_sequences
 
 
 class RegretTable(object):
@@ -40,10 +39,7 @@ class RegretTable(object):
 
     @staticmethod
     def regrets_at_timestep_pr(regrets, t, num_states, num_actions):
-        if t > 0:
-            n = num_pr_sequences(t - 1, num_states, num_actions)
-        else:
-            n = 0
+        n = num_pr_sequences(t - 1, num_states, num_actions)
         next_n = num_pr_sequences(t, num_states, num_actions)
         return regrets[n:next_n, :]
 
