@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class MdpTransitions(object):
+class DecisionProcessTransitions(object):
     def __init__(self, before, after, action=None):
         self.action = action
         self.before = before
@@ -22,7 +22,7 @@ class MdpTransitions(object):
         )
 
 
-class MdpTrajectory(object):
+class DecisionProcessTrajectory(object):
     def __init__(self, observations, actions, rewards):
         self.observations = np.array(observations)
         self.actions = np.array(actions)
@@ -39,5 +39,11 @@ class MdpTrajectory(object):
         for a in sorted(l.keys()):
             l[a]['before'].append(l[a]['after'][-1])
             l[a]['after'].append(l[a]['after'][-1])
-            t.append(MdpTransitions(l[a]['before'], l[a]['after'], action=a))
+            t.append(
+                DecisionProcessTransitions(
+                    l[a]['before'],
+                    l[a]['after'],
+                    action=a
+                )
+            )
         return t
