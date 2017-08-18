@@ -23,23 +23,6 @@ class SequenceUtilsTest(tf.test.TestCase):
             patient.num_pr_sequences_at_timestep(2, 3, 2)
         )
 
-    def test_num_pr_sequence_prefixes(self):
-        num_states = 3
-        num_actions = 2
-        self.assertEqual(
-            1,
-            patient.num_pr_sequence_prefixes(0, num_states, num_actions)
-        )
-        self.assertEqual(
-            1,
-            patient.num_pr_sequence_prefixes(1, num_states, num_actions)
-        )
-        self.assertEqual(
-            num_states * num_actions + 1,
-            patient.num_pr_sequence_prefixes(2, num_states, num_actions)
-        )
-
-
     def test_prob_sequence_state_and_action(self):
         with self.test_session():
             prob_sequence_action_and_state = tf.constant([[[0.5, 0.4, 0.1]]])

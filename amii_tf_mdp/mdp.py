@@ -1,6 +1,8 @@
 import tensorflow as tf
 from .probability_utils import prob_next_state, prob_state_given_action
 from .reward_utils import reward_distribution
+from .sequence_utils import num_pr_sequences, \
+    prob_next_sequence_action_and_next_state
 from amii_tf_nn.projection import l1_projection_to_simplex
 
 
@@ -58,7 +60,7 @@ class FixedHorizonMdp(Mdp):
         self.horizon = horizon
 
 
-class MdpState(object):
+class IrMdpState(object):
     def __init__(self, mdp, initial_state_distribution=None):
         self.mdp = mdp
         self.t = 0
@@ -96,3 +98,74 @@ class MdpState(object):
 
     def horizon_has_been_reached(self):
         return self.t >= self.mdp.horizon
+
+
+class PrMdpState(object):
+    def __init__(self, mdp, initial_state_distribution=None):
+        self.mdp = mdp
+        if initial_state_distribution is None:
+            initial_state_distribution = l1_projection_to_simplex(
+                tf.random_uniform((self.mdp.num_states(),))
+            )
+        self.root = initial_state_distribution
+        self.sequences = tf.Variable(
+            tf.constant(
+                0.0,
+                shape=(
+                    num_pr_sequences(
+                        mdp.horizon - 1,
+                        mdp.num_states(),
+                        mdp.num_actions()
+                    ),
+                    mdp.num_actions(),
+                    mdp.num_states()
+                )
+            )
+        )
+
+    def sequences_at_timestep(self, t):
+        if t < 1:
+            return tf.reshape(self.root, (1, 1, self.root.shape[0].value))
+        else:
+            n = num_pr_sequences(
+                t - 2,
+                self.mdp.num_states(),
+                self.mdp.num_actions()
+            )
+            next_n = num_pr_sequences(
+                t - 1,
+                self.mdp.num_states(),
+                self.mdp.num_actions()
+            )
+            return self.sequences[n:next_n, :, :]
+
+    def updated_sequences_at_timestep(self, t, strat=None):
+        if t < 1:
+            prob = prob_next_sequence_action_and_next_state(
+                self.mdp.transition_model,
+                self.sequences_at_timestep(t),
+                strat=strat,
+                num_actions=self.mdp.num_actions()
+            )
+            next_n = 0
+        else:
+            n = num_pr_sequences(
+                t - 2,
+                self.mdp.num_states(),
+                self.mdp.num_actions()
+            )
+            next_n = num_pr_sequences(
+                t - 1,
+                self.mdp.num_states(),
+                self.mdp.num_actions()
+            )
+            prob = prob_next_sequence_action_and_next_state(
+                self.mdp.transition_model,
+                self.sequences[n:next_n, :, :],
+                strat=strat,
+                num_actions=self.mdp.num_actions()
+            )
+        return tf.assign(
+            self.sequences[next_n:next_n + prob.shape[0].value, :, :],
+            prob
+        )
