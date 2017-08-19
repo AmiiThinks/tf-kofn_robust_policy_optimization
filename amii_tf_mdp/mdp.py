@@ -2,7 +2,7 @@ import tensorflow as tf
 from .probability_utils import prob_next_state, prob_state_given_action
 from .reward_utils import reward_distribution
 from .sequence_utils import num_pr_sequences, \
-    prob_next_sequence_action_and_next_state
+    prob_next_sequence_state_action_and_next_state
 from amii_tf_nn.projection import l1_projection_to_simplex
 
 
@@ -112,11 +112,14 @@ class PrMdpState(object):
             tf.constant(
                 0.0,
                 shape=(
-                    num_pr_sequences(
-                        mdp.horizon - 1,
-                        mdp.num_states(),
-                        mdp.num_actions()
+                    int(
+                        num_pr_sequences(
+                            mdp.horizon - 1,
+                            mdp.num_states(),
+                            mdp.num_actions()
+                        ) / mdp.num_states()
                     ),
+                    mdp.num_states(),
                     mdp.num_actions(),
                     mdp.num_states()
                 )
@@ -127,21 +130,25 @@ class PrMdpState(object):
         if t < 1:
             return tf.reshape(self.root, (1, 1, self.root.shape[0].value))
         else:
-            n = num_pr_sequences(
-                t - 2,
-                self.mdp.num_states(),
-                self.mdp.num_actions()
+            n = int(
+                num_pr_sequences(
+                    t - 2,
+                    self.mdp.num_states(),
+                    self.mdp.num_actions()
+                ) / self.mdp.num_states()
             )
-            next_n = num_pr_sequences(
-                t - 1,
-                self.mdp.num_states(),
-                self.mdp.num_actions()
+            next_n = int(
+                num_pr_sequences(
+                    t - 1,
+                    self.mdp.num_states(),
+                    self.mdp.num_actions()
+                ) / self.mdp.num_states()
             )
-            return self.sequences[n:next_n, :, :]
+            return self.sequences[n:next_n, :, :, :]
 
     def updated_sequences_at_timestep(self, t, strat=None, **kwargs):
         if t < 1:
-            prob = prob_next_sequence_action_and_next_state(
+            prob = prob_next_sequence_state_action_and_next_state(
                 self.mdp.transition_model,
                 tf.reshape(self.root, (1, 1, self.root.shape[0].value)),
                 strat=strat,
@@ -149,24 +156,28 @@ class PrMdpState(object):
             )
             next_n = 0
         else:
-            n = num_pr_sequences(
-                t - 2,
-                self.mdp.num_states(),
-                self.mdp.num_actions()
+            n = int(
+                num_pr_sequences(
+                    t - 2,
+                    self.mdp.num_states(),
+                    self.mdp.num_actions()
+                ) / self.mdp.num_states()
             )
-            next_n = num_pr_sequences(
-                t - 1,
-                self.mdp.num_states(),
-                self.mdp.num_actions()
+            next_n = int(
+                num_pr_sequences(
+                    t - 1,
+                    self.mdp.num_states(),
+                    self.mdp.num_actions()
+                ) / self.mdp.num_states()
             )
-            prob = prob_next_sequence_action_and_next_state(
+            prob = prob_next_sequence_state_action_and_next_state(
                 self.mdp.transition_model,
-                self.sequences[n:next_n, :, :],
+                self.sequences[n:next_n, :, :, :],
                 strat=strat,
                 num_actions=self.mdp.num_actions()
             )
         return tf.assign(
-            self.sequences[next_n:next_n + prob.shape[0].value, :, :],
+            self.sequences[next_n:next_n + prob.shape[0].value, :, :, :],
             prob,
             **kwargs
         )
@@ -190,21 +201,6 @@ class PrMdpState(object):
                         :
                     ]
                 )
-
         with tf.control_dependencies([last_sequence_prob_update]):
-            rewards_at_timestep = []
-            for t in range(1, self.mdp.horizon + 1):
-                reshaped_sequences = tf.reshape(
-                    self.sequences_at_timestep(t),
-                    shape=(
-                        -1,
-                        self.mdp.num_states(),
-                        self.mdp.num_actions(),
-                        self.mdp.num_states()
-                    )
-                )
-                rewards_at_timestep.append(
-                    reshaped_sequences * self.mdp.rewards
-                )
-            n = tf.reduce_sum(tf.concat(rewards_at_timestep, axis=0))
+            n = tf.reduce_sum(self.sequences * self.mdp.rewards)
         return n

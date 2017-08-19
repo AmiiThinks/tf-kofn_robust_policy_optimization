@@ -25,7 +25,7 @@ class SequenceUtilsTest(tf.test.TestCase):
 
     def test_prob_sequence_state_and_action(self):
         with self.test_session():
-            prob_sequence_action_and_state = tf.constant([[[0.5, 0.4, 0.1]]])
+            prob_sequence_action_and_state = tf.constant([[[[0.5, 0.4, 0.1]]]])
             num_actions = 2
             self.assertAllClose(
                 [
@@ -76,16 +76,18 @@ class SequenceUtilsTest(tf.test.TestCase):
                     tf.constant(
                         [
                             [
-                                [1.11, 1.12, 1.13],
-                                [1.21, 1.22, 1.23]
-                            ],
-                            [
-                                [2.11, 2.12, 2.13],
-                                [2.21, 2.22, 2.23]
-                            ],
-                            [
-                                [3.11, 3.12, 3.13],
-                                [3.21, 3.22, 3.23]
+                                [
+                                    [1.11, 1.12, 1.13],
+                                    [1.21, 1.22, 1.23]
+                                ],
+                                [
+                                    [2.11, 2.12, 2.13],
+                                    [2.21, 2.22, 2.23]
+                                ],
+                                [
+                                    [3.11, 3.12, 3.13],
+                                    [3.21, 3.22, 3.23]
+                                ]
                             ]
                         ]
                     ),
@@ -93,9 +95,9 @@ class SequenceUtilsTest(tf.test.TestCase):
                 ).eval()
             )
 
-    def test_prob_next_sequence_action_and_next_state(self):
+    def test_prob_next_sequence_state_action_and_next_state(self):
         with self.test_session():
-            prob_sequence_action_and_state = tf.constant([[[0.5, 0.4, 0.1]]])
+            prob_sequence_action_and_state = tf.constant([[[[0.5, 0.4, 0.1]]]])
             num_actions = 2
             transition_model = [
                 [
@@ -111,24 +113,26 @@ class SequenceUtilsTest(tf.test.TestCase):
                     [5.31, 5.32, 5.33]
                 ]
             ]
-            x_prob_next_sequence_action_and_next_state = [
+            x_prob_next_sequence_state_action_and_next_state = [
                 [
-                    [2.05500007, 2.05999994, 2.06500006],
-                    [2.55500007, 2.55999994, 2.56500006]
-                ],
-                [
-                    [1.68400002, 1.68799996, 1.69200003],
-                    [2.08400011, 2.08800006, 2.09200001]
-                ],
-                [
-                    [0.43099999, 0.43200001, 0.433],
-                    [0.53100002, 0.53200001, 0.53299999]
+                    [
+                        [2.05500007, 2.05999994, 2.06500006],
+                        [2.55500007, 2.55999994, 2.56500006]
+                    ],
+                    [
+                        [1.68400002, 1.68799996, 1.69200003],
+                        [2.08400011, 2.08800006, 2.09200001]
+                    ],
+                    [
+                        [0.43099999, 0.43200001, 0.433],
+                        [0.53100002, 0.53200001, 0.53299999]
+                    ]
                 ]
             ]
 
             self.assertAllClose(
-                x_prob_next_sequence_action_and_next_state,
-                patient.prob_next_sequence_action_and_next_state(
+                x_prob_next_sequence_state_action_and_next_state,
+                patient.prob_next_sequence_state_action_and_next_state(
                     transition_model,
                     prob_sequence_action_and_state,
                     num_actions=num_actions
@@ -157,44 +161,52 @@ class SequenceUtilsTest(tf.test.TestCase):
                     [5.21, 5.22]
                 ]
             ]
-            x_prob_next_sequence_action_and_next_state = [
+            x_prob_next_sequence_state_action_and_next_state = [
                 [
-                    [4.56210041, 4.57319975],
-                    [5.67210007, 5.68319988]
+                    [
+                        [4.56210041, 4.57319975],
+                        [5.67210007, 5.68319988]
+                    ],
+                    [
+                        [4.71519995, 4.7263999],
+                        [5.83519983, 5.84639978]
+                    ]
                 ],
                 [
-                    [4.71519995, 4.7263999],
-                    [5.83519983, 5.84639978]
+                    [
+                        [4.97310019, 4.98519993],
+                        [6.18310022, 6.19519997]
+                    ],
+                    [
+                        [5.13619995, 5.14839983],
+                        [6.35620022, 6.3684001]
+                    ]
                 ],
                 [
-                    [4.97310019, 4.98519993],
-                    [6.18310022, 6.19519997]
+                    [
+                        [8.67210007, 8.69319916],
+                        [10.78209972, 10.80319881]
+                    ],
+                    [
+                        [8.92519951, 8.94639874],
+                        [11.04519939, 11.06639862]
+                    ]
                 ],
                 [
-                    [5.13619995, 5.14839983],
-                    [6.35620022, 6.3684001]
-                ],
-                [
-                    [8.67210007, 8.69319916],
-                    [10.78209972, 10.80319881]
-                ],
-                [
-                    [8.92519951, 8.94639874],
-                    [11.04519939, 11.06639862]
-                ],
-                [
-                    [9.08310032, 9.10519981],
-                    [11.29310036, 11.31519985]
-                ],
-                [
-                    [9.34619999, 9.36839962],
-                    [11.56620026, 11.58839989]
+                    [
+                        [9.08310032, 9.10519981],
+                        [11.29310036, 11.31519985]
+                    ],
+                    [
+                        [9.34619999, 9.36839962],
+                        [11.56620026, 11.58839989]
+                    ]
                 ]
             ]
 
             self.assertAllClose(
-                x_prob_next_sequence_action_and_next_state,
-                patient.prob_next_sequence_action_and_next_state(
+                x_prob_next_sequence_state_action_and_next_state,
+                patient.prob_next_sequence_state_action_and_next_state(
                     transition_model,
                     prob_sequence_action_and_state,
                     num_actions=num_actions

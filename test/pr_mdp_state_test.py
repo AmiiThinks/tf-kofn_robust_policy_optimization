@@ -35,7 +35,8 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAllEqual(
                 tf.zeros(
                     (
-                        num_states * (1 + num_states * num_actions),
+                        1 + num_states * num_actions,
+                        num_states,
                         num_actions,
                         num_states
                     )
@@ -51,7 +52,8 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAllEqual(
                 tf.zeros(
                     (
-                        num_states * (1 + num_states * num_actions),
+                        1 + num_states * num_actions,
+                        num_states,
                         num_actions,
                         num_states
                     )
@@ -87,7 +89,8 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAllEqual(
                 tf.zeros(
                     (
-                        num_states * (1 + num_states * num_actions),
+                        1 + num_states * num_actions,
+                        num_states,
                         num_actions,
                         num_states
                     )
@@ -99,16 +102,18 @@ class PrMdpStateTest(tf.test.TestCase):
 
             x_update_1 = [
                 [
-                    [0.15077846, 0., 0.01588821],
-                    [0.02819305, 0.13847362, 0.]
-                ],
-                [
-                    [0.04897123, 0.28436211, 0.],
-                    [0., 0.33333334, 0.]
-                ],
-                [
-                    [0., 0.33023661, 0.16976337],
-                    [0.5, 0., 0.]
+                    [
+                        [0.15077846, 0., 0.01588821],
+                        [0.02819305, 0.13847362, 0.]
+                    ],
+                    [
+                        [0.04897123, 0.28436211, 0.],
+                        [0., 0.33333334, 0.]
+                    ],
+                    [
+                        [0., 0.33023661, 0.16976337],
+                        [0.5, 0., 0.]
+                    ]
                 ]
             ]
             self.assertAllClose(
@@ -117,7 +122,8 @@ class PrMdpStateTest(tf.test.TestCase):
                         x_update_1,
                         tf.zeros(
                             (
-                                num_states * num_states * num_actions,
+                                num_states * num_actions,
+                                num_states,
                                 num_actions,
                                 num_states
                             )
@@ -132,7 +138,7 @@ class PrMdpStateTest(tf.test.TestCase):
 
             self.assertAllClose(
                 tf.constant(x_update_1).eval(),
-                patient.sequences[:num_states, :, :].eval()
+                patient.sequences[:1, :, :, :].eval()
             )
             # TODO Check that the rest of the sequences were updated properly.
 
@@ -164,7 +170,8 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAllEqual(
                 tf.zeros(
                     (
-                        num_states * (1 + num_states * num_actions),
+                        1 + num_states * num_actions,
+                        num_states,
                         num_actions,
                         num_states
                     )
@@ -178,6 +185,7 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAllEqual(
                 tf.zeros(
                     (
+                        1,
                         num_states,
                         num_actions,
                         num_states
@@ -188,7 +196,8 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAllEqual(
                 tf.zeros(
                     (
-                        num_states * num_states * num_actions,
+                        num_states * num_actions,
+                        num_states,
                         num_actions,
                         num_states
                     )
@@ -200,16 +209,18 @@ class PrMdpStateTest(tf.test.TestCase):
 
             x_update_1 = [
                 [
-                    [0.15077846, 0., 0.01588821],
-                    [0.02819305, 0.13847362, 0.]
-                ],
-                [
-                    [0.04897123, 0.28436211, 0.],
-                    [0., 0.33333334, 0.]
-                ],
-                [
-                    [0., 0.33023661, 0.16976337],
-                    [0.5, 0., 0.]
+                    [
+                        [0.15077846, 0., 0.01588821],
+                        [0.02819305, 0.13847362, 0.]
+                    ],
+                    [
+                        [0.04897123, 0.28436211, 0.],
+                        [0., 0.33333334, 0.]
+                    ],
+                    [
+                        [0., 0.33023661, 0.16976337],
+                        [0.5, 0., 0.]
+                    ]
                 ]
             ]
             self.assertAllClose(

@@ -32,7 +32,7 @@ def prob_sequence_state_and_action(
 ):
     '''
     Params:
-    - prob_sequence_action_state: Rank-3 Tensor (|Seq| by |A| by |S|).
+    - prob_sequence_action_state: Tensor with rank > 2 (* by |A| by |S|).
     - [strat]: (Optional) Rank-2 Tensor (|Seq| * |A| * |S| by |A'|).
         Defaults to all ones so that every row is the probability of the
         state under all pure strategies. Must supply the number of actions
@@ -48,11 +48,7 @@ def prob_sequence_state_and_action(
     if strat is None:
         strat = tf.ones(
             (
-                (
-                    prob_sequence_action_state.shape[0].value *
-                    prob_sequence_action_state.shape[1].value *
-                    prob_sequence_action_state.shape[2].value
-                ),
+                tf.reshape(prob_sequence_action_state, [-1]).shape[0].value,
                 num_actions
             )
         )
@@ -63,17 +59,14 @@ def prob_sequence_state_and_action(
             num_actions=num_actions
         ),
         shape=(
-            (
-                prob_sequence_action_state.shape[0].value *
-                prob_sequence_action_state.shape[1].value
-            ),
-            prob_sequence_action_state.shape[2].value,
+            -1,
+            prob_sequence_action_state.shape[-1].value,
             num_actions
         )
     )
 
 
-def prob_next_sequence_action_and_next_state(
+def prob_next_sequence_state_action_and_next_state(
     transition_model,
     prob_sequence_action_state,
     strat=None,
@@ -81,7 +74,7 @@ def prob_next_sequence_action_and_next_state(
 ):
     '''
     Params:
-    - prob_sequence_action_state: Rank-3 Tensor (|Seq| by |A| by |S|).
+    - prob_sequence_action_state: Tensor with rank > 2 (* by |A| by |S|).
     - [strat]: (Optional) Rank-2 Tensor (|Seq| * |A| * |S| by |A|).
         Defaults to all ones so that every row is the probability of the
         state under all pure strategies. Must supply the number of actions
@@ -90,7 +83,7 @@ def prob_next_sequence_action_and_next_state(
         `strat` is `None`.
 
     Returns:
-    - Rank-3 Tensor (|Seq| * |A| * |S| by |A| by |S|). Prob of being in each
+    - Rank-4 Tensor (|Seq| * |A| by |S| by |A| by |S|). Prob of being in each
         state after each of the next sequences sampling each action under
         strategy `strat`.
     '''
@@ -113,14 +106,4 @@ def prob_next_sequence_action_and_next_state(
         prob_state_action_sequence_next_state,
         [2, 0, 1, 3]
     )
-    return tf.reshape(
-        prob_sequence_state_action_next_state,
-        shape=(
-            (
-                prob_sequence_state_action_next_state.shape[0].value *
-                prob_sequence_state_action_next_state.shape[1].value
-            ),
-            prob_sequence_state_action_next_state.shape[2].value,
-            prob_sequence_state_action_next_state.shape[-1].value
-        )
-    )
+    return prob_sequence_state_action_next_state
