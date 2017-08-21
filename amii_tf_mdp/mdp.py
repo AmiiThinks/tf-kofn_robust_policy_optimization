@@ -42,6 +42,16 @@ class Mdp(object):
             axes=1
         )
 
+    def num_pr_sequences(self, t):
+        return num_pr_sequences(
+            t,
+            self.num_states(),
+            self.num_actions()
+        )
+
+    def num_pr_prefixes(self, t):
+        return int(self.num_pr_sequences(t) / self.num_states())
+
 
 class FixedHorizonMdp(Mdp):
     @classmethod
@@ -101,7 +111,12 @@ class IrMdpState(object):
 
 
 class PrMdpState(object):
-    def __init__(self, mdp, initial_state_distribution=None):
+    def __init__(
+        self,
+        mdp,
+        initial_state_distribution=None,
+        name=None
+    ):
         self.mdp = mdp
         if initial_state_distribution is None:
             initial_state_distribution = l1_projection_to_simplex(
@@ -112,38 +127,21 @@ class PrMdpState(object):
             tf.constant(
                 0.0,
                 shape=(
-                    int(
-                        num_pr_sequences(
-                            mdp.horizon - 1,
-                            mdp.num_states(),
-                            mdp.num_actions()
-                        ) / mdp.num_states()
-                    ),
+                    mdp.num_pr_prefixes(mdp.horizon - 1),
                     mdp.num_states(),
                     mdp.num_actions(),
                     mdp.num_states()
                 )
-            )
+            ),
+            name=type(self).__name__ if name is None else name
         )
 
     def sequences_at_timestep(self, t):
         if t < 1:
             return tf.reshape(self.root, (1, 1, self.root.shape[0].value))
         else:
-            n = int(
-                num_pr_sequences(
-                    t - 2,
-                    self.mdp.num_states(),
-                    self.mdp.num_actions()
-                ) / self.mdp.num_states()
-            )
-            next_n = int(
-                num_pr_sequences(
-                    t - 1,
-                    self.mdp.num_states(),
-                    self.mdp.num_actions()
-                ) / self.mdp.num_states()
-            )
+            n = self.mdp.num_pr_prefixes(t - 2)
+            next_n = self.mdp.num_pr_prefixes(t - 1)
             return self.sequences[n:next_n, :, :, :]
 
     def updated_sequences_at_timestep(self, t, strat=None, **kwargs):
@@ -156,20 +154,8 @@ class PrMdpState(object):
             )
             next_n = 0
         else:
-            n = int(
-                num_pr_sequences(
-                    t - 2,
-                    self.mdp.num_states(),
-                    self.mdp.num_actions()
-                ) / self.mdp.num_states()
-            )
-            next_n = int(
-                num_pr_sequences(
-                    t - 1,
-                    self.mdp.num_states(),
-                    self.mdp.num_actions()
-                ) / self.mdp.num_states()
-            )
+            n = self.mdp.num_pr_prefixes(t - 2)
+            next_n = self.mdp.num_pr_prefixes(t - 1)
             prob = prob_next_sequence_state_action_and_next_state(
                 self.mdp.transition_model,
                 self.sequences[n:next_n, :, :, :],
@@ -182,25 +168,34 @@ class PrMdpState(object):
             **kwargs
         )
 
-    def expected_value(self, strat):
-        last_sequence_prob_update = strat
+    def unroll(self, strat=None):
+        last_sequence_prob_update = None
+        strat_for_current_sequences = None
         for t in range(self.mdp.horizon):
-            with tf.control_dependencies([last_sequence_prob_update]):
-                last_sequence_prob_update = self.updated_sequences_at_timestep(
-                    t,
-                    strat=strat[
-                        num_pr_sequences(
-                            t - 1,
-                            self.mdp.num_states(),
-                            self.mdp.num_actions()
-                        ):num_pr_sequences(
-                            t,
-                            self.mdp.num_states(),
-                            self.mdp.num_actions()
-                        ),
-                        :
-                    ]
+            if strat is not None:
+                strat_for_current_sequences = strat[
+                    self.mdp.num_pr_sequences(t - 1):
+                    self.mdp.num_pr_sequences(t),
+                    :
+                ]
+            if last_sequence_prob_update is None:
+                last_sequence_prob_update = (
+                    self.updated_sequences_at_timestep(
+                        t,
+                        strat=strat_for_current_sequences
+                    )
                 )
-        with tf.control_dependencies([last_sequence_prob_update]):
+            else:
+                with tf.control_dependencies([last_sequence_prob_update]):
+                    last_sequence_prob_update = (
+                        self.updated_sequences_at_timestep(
+                            t,
+                            strat=strat_for_current_sequences
+                        )
+                    )
+        return last_sequence_prob_update
+
+    def expected_value(self, strat):
+        with tf.control_dependencies([self.unroll(strat)]):
             n = tf.reduce_sum(self.sequences * self.mdp.rewards)
         return n
