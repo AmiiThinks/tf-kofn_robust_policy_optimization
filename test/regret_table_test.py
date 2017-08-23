@@ -286,11 +286,13 @@ class RegretTableTest(tf.test.TestCase):
 
             pr_mdp_state = PrMdpState(mdp, x_root)
             pr_mdp_state.sequences.initializer.run()
-            unrolled_sequences = sess.run(pr_mdp_state.unroll())
+            unrolled_sequences = sess.run(
+                pr_mdp_state.unroll() * mdp.rewards
+            )
 
             for patient in [
-                RegretTablePr(mdp),
-                RegretMatchingPlusPr(mdp)
+                RegretTablePr.from_mdp(mdp),
+                RegretMatchingPlusPr.from_mdp(mdp)
             ]:
                 patient.regrets.initializer.run()
 

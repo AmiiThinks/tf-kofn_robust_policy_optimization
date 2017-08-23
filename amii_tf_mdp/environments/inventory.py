@@ -77,9 +77,9 @@ class InventoryMdpGenerator(object):
                         T_s_a.append(prob_d)
 
                         reward = (
-                            self.resale_cost() * d
-                            - self.wholesale_cost * a
-                            - self.maintenance_cost() * s_prime
+                            self.resale_cost() * d -
+                            self.wholesale_cost * a -
+                            self.maintenance_cost() * s_prime
                         )
                         R_s_a.append(reward)
                 R_s.append(R_s_a)
@@ -90,4 +90,7 @@ class InventoryMdpGenerator(object):
                 T_s.append(T_s_a)
             R.append(R_s)
             T.append(T_s)
-        return Mdp(tf.constant(np.array(T), dtype=tf.float32), tf.constant(np.array(R), dtype=tf.float32))
+        return Mdp(
+            tf.constant(np.array(T), dtype=tf.float32),
+            tf.constant(np.array(R), dtype=tf.float32)
+        )

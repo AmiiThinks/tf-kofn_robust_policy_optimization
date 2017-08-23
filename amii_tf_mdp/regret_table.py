@@ -1,7 +1,6 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
 from .sequence_utils import num_pr_sequences, num_ir_sequences
-from .mdp import PrMdpState
 
 
 class RegretTable(object):
@@ -15,7 +14,10 @@ class RegretTable(object):
             tf.constant(
                 0.0,
                 # TODO Maybe this should be horizon - 1, not sure.
-                shape=(num_ir_sequences(horizon, num_states), num_actions)
+                shape=(
+                    num_ir_sequences(horizon, num_states),
+                    num_actions
+                )
             ),
             **kwargs
         )
@@ -94,18 +96,34 @@ class RegretTable(object):
             **kwargs
         )
 
-    def __init__(self, mdp, name=None):
-        self.mdp = mdp
-        self.regrets = self.__class__.new_table(
+    @classmethod
+    def from_mdp(cls, mdp, name=None):
+        return cls(
             mdp.horizon,
             mdp.num_states(),
             mdp.num_actions(),
+            name=name
+        )
+
+    def __init__(self, horizon, num_states, num_actions, name=None):
+        self._horizon = horizon
+        self._num_states = num_states
+        self.regrets = self.__class__.new_table(
+            horizon,
+            num_states,
+            num_actions,
             name=type(self).__name__ if name is None else name
         )
 
+    def horizon(self): return self._horizon
+    def num_states(self): return self._num_states
+    def num_actions(self): return self.regrets.shape[-1].value
+
     def strat_at_timestep(self, t):
         return tf.transpose(
-            l1_projection_to_simplex(tf.transpose(self.at_timestep(t)))
+            l1_projection_to_simplex(
+                tf.transpose(self.at_timestep(t))
+            )
         )
 
     def strat(self):
@@ -117,7 +135,12 @@ class RegretTable(object):
 class RegretTableIr(RegretTable):
     @classmethod
     def new_table(cls, horizon, num_states, num_actions, **kwargs):
-        return cls.new_ir_table(horizon, num_states, num_actions, **kwargs)
+        return cls.new_ir_table(
+            horizon,
+            num_states,
+            num_actions,
+            **kwargs
+        )
 
     def strat_at_timestep(self, t):
         '''
@@ -128,7 +151,7 @@ class RegretTableIr(RegretTable):
         return self.__class__.sequences_at_timestep_ir(
             self.strat(),
             t,
-            self.mdp.num_states()
+            self.num_states()
         )
 
     def updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
@@ -143,7 +166,7 @@ class RegretTableIr(RegretTable):
         return self.__class__.updated_regrets_at_timestep_ir(
             self.regrets,
             t,
-            self.mdp.num_states(),
+            self.num_states(),
             inst_regrets,
             **kwargs
         )
@@ -152,42 +175,57 @@ class RegretTableIr(RegretTable):
 class RegretTablePr(RegretTable):
     @classmethod
     def new_table(cls, horizon, num_states, num_actions, **kwargs):
-        return cls.new_pr_table(horizon, num_states, num_actions, **kwargs)
+        return cls.new_pr_table(
+            horizon,
+            num_states,
+            num_actions,
+            **kwargs
+        )
+
+    def num_pr_sequences(self, t):
+        return num_pr_sequences(
+            t,
+            self.num_states(),
+            self.num_actions()
+        )
+
+    def num_pr_prefixes(self, t):
+        return int(self.num_pr_sequences(t) / self.num_states())
 
     def strat_at_timestep(self, t):
         return self.__class__.sequences_at_timestep_pr(
             self.strat(),
             t,
-            self.mdp.num_states(),
-            self.mdp.num_actions()
+            self.num_states(),
+            self.num_actions()
         )
 
     def updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
         return self.__class__.updated_regrets_at_timestep_pr(
             self.regrets,
             t,
-            self.mdp.num_states(),
-            self.mdp.num_actions(),
+            self.num_states(),
+            self.num_actions(),
             inst_regrets,
             **kwargs
         )
 
-    def cfr_update(self, unrolled_pr_mdp_state_sequences):
+    def cfr_update(self, unrolled_pr_mdp_state_sequence_rewards):
         regret_updates = []
         current_cf_state_values = None
         strat = tf.reshape(
             self.strat(),
-            [-1, self.mdp.num_states(), self.mdp.num_actions()]
+            [-1, self.num_states(), self.num_actions()]
         )
         action_rewards_weighted_by_chance = tf.squeeze(
             tf.reduce_sum(
-                unrolled_pr_mdp_state_sequences * self.mdp.rewards,
+                unrolled_pr_mdp_state_sequence_rewards,
                 axis=3
             )
         )
-        for t in range(self.mdp.horizon - 1, -1, -1):
-            n = self.mdp.num_pr_prefixes(t - 1)
-            next_n = self.mdp.num_pr_prefixes(t)
+        for t in range(self.horizon() - 1, -1, -1):
+            n = self.num_pr_prefixes(t - 1)
+            next_n = self.num_pr_prefixes(t)
             current_rewards = action_rewards_weighted_by_chance[
                 n:next_n,
                 :,
@@ -205,8 +243,8 @@ class RegretTablePr(RegretTable):
                         ),
                         [
                             -1,
-                            self.mdp.num_states(),
-                            self.mdp.num_actions()
+                            self.num_states(),
+                            self.num_actions()
                         ]
                     )
                 )
@@ -231,7 +269,7 @@ class RegretTablePr(RegretTable):
                     t,
                     tf.reshape(
                         cf_regrets,
-                        [-1, self.mdp.num_actions()]
+                        [-1, self.num_actions()]
                     )
                 )
             )
