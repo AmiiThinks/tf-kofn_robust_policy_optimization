@@ -336,6 +336,72 @@ class PrMdpStateTest(tf.test.TestCase):
             self.assertAlmostEqual(-0.62523419, ev.eval())
             self.assertAlmostEqual(-0.62523419, ev.eval())
 
+    def test_best_response(self):
+        with self.test_session() as sess:
+            horizon = 2
+            num_states = 3
+            num_actions = 2
+
+            transition_model = tf.transpose(
+                l1_projection_to_simplex(
+                    np.random.normal(
+                        size=(
+                            num_states,
+                            num_actions,
+                            num_states
+                        )
+                    )
+                )
+            )
+            rewards = (
+                np.random.normal(
+                    loc=-1.0,
+                    scale=1.0,
+                    size=(num_states, num_actions, num_states)
+                ) *
+                tf.transpose(
+                    l1_projection_to_simplex(
+                        np.random.normal(
+                            size=(
+                                num_states,
+                                num_actions,
+                                num_states
+                            ),
+                            scale=5.0
+                        )
+                    )
+                )
+            )
+            mdp = FixedHorizonMdp(horizon, transition_model, rewards)
+            x_root = l1_projection_to_simplex(
+                tf.constant([1, 1, 1.0])
+            )
+            uniform_random_strat = tf.transpose(
+                l1_projection_to_simplex(
+                    tf.zeros(
+                        (
+                            num_actions,
+                            num_pr_sequences(
+                                horizon - 1,
+                                num_states,
+                                num_actions
+                            )
+                        )
+                    )
+                )
+            )
+
+            patient = PrMdpState(mdp, x_root)
+            self.assertAllEqual(x_root, patient.root)
+
+            patient.sequences.initializer.run()
+            ev = patient.expected_value(uniform_random_strat)
+            self.assertAlmostEqual(-0.62523419, ev.eval())
+
+            br_strat, br_ev = patient.best_response()
+            sess.run(tf.global_variables_initializer())
+            self.assertAlmostEqual(-0.35074115, br_ev.eval())
+
     def test_root_counterfactual_value_is_ev(self):
         with self.test_session() as sess:
             horizon = 2

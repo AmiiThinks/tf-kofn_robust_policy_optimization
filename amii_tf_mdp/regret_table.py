@@ -172,6 +172,9 @@ class RegretTablePr(RegretTable):
             **kwargs
         )
 
+    # TODO Regret updates can be done in parallel
+    # TODO Reuse the same MDP state to avoid unrolling every time
+    # this function is called.
     def cfr_update(self, initial_state_distribution=None):
         last_regret_update = None
         pr_mdp_state = PrMdpState(

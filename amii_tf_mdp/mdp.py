@@ -199,3 +199,111 @@ class PrMdpState(object):
         with tf.control_dependencies([self.unroll(strat)]):
             n = tf.reduce_sum(self.sequences * self.mdp.rewards)
         return n
+
+    def best_response(self):
+        strat = tf.Variable(
+            tf.zeros(
+                (
+                    self.mdp.num_pr_prefixes(self.mdp.horizon - 1),
+                    self.mdp.num_states(),
+                    self.mdp.num_actions()
+                )
+            )
+        )
+        strat.initializer.run()
+        current_cf_state_values = None
+
+        with tf.control_dependencies([self.unroll()]):
+            action_rewards_weighted_by_chance = tf.squeeze(
+                tf.reduce_sum(
+                    self.sequences * self.mdp.rewards,
+                    axis=3
+                )
+            )
+            for t in range(self.mdp.horizon - 1, -1, -1):
+                n = self.mdp.num_pr_prefixes(t - 1)
+                next_n = self.mdp.num_pr_prefixes(t)
+                current_rewards = action_rewards_weighted_by_chance[
+                    n:next_n,
+                    :,
+                    :
+                ]
+                num_sequences = next_n - n
+                if current_cf_state_values is None:
+                    current_cf_action_values = current_rewards
+                else:
+                    current_cf_action_values = (
+                        current_rewards +
+                        tf.reshape(
+                            tf.reduce_sum(
+                                current_cf_state_values,
+                                axis=1
+                            ),
+                            [
+                                -1,
+                                self.mdp.num_states(),
+                                self.mdp.num_actions()
+                            ]
+                        )
+                    )
+                br_indices = tf.expand_dims(
+                    tf.argmax(
+                        tf.reshape(
+                            current_cf_action_values,
+                            (
+                                num_sequences * self.mdp.num_states(),
+                                current_cf_action_values.shape[-1].value
+                            )
+                        ),
+                        axis=1
+                    ),
+                    dim=1
+                )
+                scatter_indices = tf.concat(
+                    [
+                        tf.expand_dims(
+                            tf.range(
+                                br_indices.shape[0].value,
+                                dtype=tf.int64
+                            ),
+                            dim=1
+                        ),
+                        br_indices
+                    ],
+                    axis=1
+                )
+                strat_update = tf.assign(
+                    strat[n:next_n, :, :],
+                    tf.reshape(
+                        tf.scatter_nd(
+                            scatter_indices,
+                            tf.ones(br_indices.shape[:1]),
+                            shape=(
+                                num_sequences * self.mdp.num_states(),
+                                self.mdp.num_actions()
+                            )
+                        ),
+                        (
+                            num_sequences,
+                            self.mdp.num_states(),
+                            self.mdp.num_actions()
+                        )
+                    )
+                )
+                with tf.control_dependencies([strat_update]):
+                    current_cf_state_values = tf.expand_dims(
+                        # TODO Should be able to do this with tensordot
+                        # but it didn't work the first way I tried.
+                        tf.reduce_sum(
+                            (
+                                strat[n:next_n, :, :] *
+                                current_cf_action_values
+                            ),
+                            axis=2
+                        ),
+                        axis=2
+                    )
+        br_ev = tf.reduce_sum(current_cf_state_values)
+        with tf.control_dependencies([br_ev]):
+            final_strat = tf.convert_to_tensor(strat)
+        return (final_strat, br_ev)

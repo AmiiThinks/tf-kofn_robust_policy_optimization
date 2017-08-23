@@ -263,9 +263,7 @@ class RegretTableTest(tf.test.TestCase):
                 )
             )
             rewards = (
-                np.random.normal(
-                    loc=-1.0,
-                    scale=1.0,
+                np.random.uniform(
                     size=(num_states, num_actions, num_states)
                 ) *
                 tf.transpose(
@@ -286,65 +284,46 @@ class RegretTableTest(tf.test.TestCase):
                 tf.constant([1, 1, 1.0])
             )
 
-            patient = RegretTablePr(mdp)
-
-            update_regrets, ev = patient.cfr_update(x_root)
-            patient.regrets.initializer.run()
-
             pr_mdp_state = PrMdpState(mdp, x_root)
             pr_mdp_state.sequences.initializer.run()
-            x_ev = pr_mdp_state.expected_value(
-                patient.strat()
-            ).eval()
-            self.assertAlmostEqual(-0.62523419, x_ev)
-            self.assertAlmostEqual(x_ev, ev.eval())
 
-            sess.run(update_regrets)
+            for patient in [
+                RegretTablePr(mdp),
+                RegretMatchingPlusPr(mdp)
+            ]:
+                patient.regrets.initializer.run()
 
-            update_regrets, ev = patient.cfr_update(x_root)
-            ev = ev.eval()
-            self.assertGreater(ev, -0.62523419)
-            self.assertAlmostEqual(
-                pr_mdp_state.expected_value(patient.strat()).eval(),
-                ev
-            )
-            update_regrets, ev = patient.cfr_update(x_root)
-            sess.run(update_regrets)
+                x_ev = pr_mdp_state.expected_value(
+                    patient.strat()
+                ).eval()
+                self.assertAlmostEqual(0.78666484, x_ev)
 
-            self.assertGreaterEqual(
-                pr_mdp_state.expected_value(patient.strat()).eval(),
-                ev.eval()
-            )
+                update_regrets, ev = patient.cfr_update(x_root)
 
-            patient = RegretMatchingPlusPr(mdp)
+                self.assertAlmostEqual(x_ev, ev.eval(), places=5)
 
-            update_regrets, ev = patient.cfr_update(x_root)
-            patient.regrets.initializer.run()
+                sess.run(update_regrets)
 
-            pr_mdp_state = PrMdpState(mdp, x_root)
-            pr_mdp_state.sequences.initializer.run()
-            x_ev = pr_mdp_state.expected_value(
-                patient.strat()
-            ).eval()
-            self.assertAlmostEqual(-0.62523419, x_ev)
-            self.assertAlmostEqual(x_ev, ev.eval())
+                update_regrets, ev = patient.cfr_update(x_root)
+                self.assertGreater(
+                    pr_mdp_state.expected_value(
+                        patient.strat()
+                    ).eval(),
+                    ev.eval()
+                )
+                sess.run(update_regrets)
 
-            sess.run(update_regrets)
+                update_regrets, ev = patient.cfr_update(x_root)
+                self.assertGreater(
+                    pr_mdp_state.expected_value(
+                        patient.strat()
+                    ).eval(),
+                    ev.eval()
+                )
+                sess.run(update_regrets)
 
-            update_regrets, ev = patient.cfr_update(x_root)
-            ev = ev.eval()
-            self.assertGreater(ev, -0.62523419)
-            self.assertAlmostEqual(
-                pr_mdp_state.expected_value(patient.strat()).eval(),
-                ev
-            )
-            update_regrets, ev = patient.cfr_update(x_root)
-            sess.run(update_regrets)
-
-            self.assertGreaterEqual(
-                pr_mdp_state.expected_value(patient.strat()).eval(),
-                ev.eval()
-            )
+                br_strat, br_ev = pr_mdp_state.best_response()
+                self.assertAlmostEqual(br_ev.eval(), ev.eval())
 
 
 if __name__ == '__main__':
