@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from .probability_utils import prob_next_state, prob_state_given_action
 from .reward_utils import reward_distribution
 from .sequence_utils import num_pr_sequences, \
@@ -120,7 +121,7 @@ class PrMdpState(object):
         self.mdp = mdp
         if initial_state_distribution is None:
             initial_state_distribution = l1_projection_to_simplex(
-                tf.random_uniform((self.mdp.num_states(),))
+                np.random.uniform(size=(self.mdp.num_states(),))
             )
         self.root = initial_state_distribution
         self.sequences = tf.Variable(

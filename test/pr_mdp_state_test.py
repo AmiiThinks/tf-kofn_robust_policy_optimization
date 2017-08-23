@@ -27,8 +27,8 @@ class PrMdpStateTest(tf.test.TestCase):
             patient = PrMdpState(mdp)
             sess.run(tf.global_variables_initializer())
 
-            self.assertAllEqual(
-                tf.constant([0.61768991, 0.21680082, 0.16550928]).eval(),
+            self.assertAllClose(
+                [0.11914756, 0.49999818, 0.38085425],
                 patient.root.eval()
             )
             self.assertAllEqual(

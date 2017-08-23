@@ -10,7 +10,8 @@ setup(
         # tensorflow or tensorflow-gpu v1.2
         'fire',
         'numpy',
-        'amii_tf_nn'
+        'amii_tf_nn',
+        'scipy'  # For environments/inventory.
     ],
     tests_require=['pytest', 'pytest-cov'],
     setup_requires=['pytest-runner'],
