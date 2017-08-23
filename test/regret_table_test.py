@@ -286,6 +286,7 @@ class RegretTableTest(tf.test.TestCase):
 
             pr_mdp_state = PrMdpState(mdp, x_root)
             pr_mdp_state.sequences.initializer.run()
+            unrolled_sequences = sess.run(pr_mdp_state.unroll())
 
             for patient in [
                 RegretTablePr(mdp),
@@ -298,13 +299,17 @@ class RegretTableTest(tf.test.TestCase):
                 ).eval()
                 self.assertAlmostEqual(0.78666484, x_ev)
 
-                update_regrets, ev = patient.cfr_update(x_root)
+                update_regrets, ev = patient.cfr_update(
+                    unrolled_sequences
+                )
 
                 self.assertAlmostEqual(x_ev, ev.eval(), places=5)
 
                 sess.run(update_regrets)
 
-                update_regrets, ev = patient.cfr_update(x_root)
+                update_regrets, ev = patient.cfr_update(
+                    unrolled_sequences
+                )
                 self.assertGreater(
                     pr_mdp_state.expected_value(
                         patient.strat()
@@ -313,7 +318,9 @@ class RegretTableTest(tf.test.TestCase):
                 )
                 sess.run(update_regrets)
 
-                update_regrets, ev = patient.cfr_update(x_root)
+                update_regrets, ev = patient.cfr_update(
+                    unrolled_sequences
+                )
                 self.assertGreater(
                     pr_mdp_state.expected_value(
                         patient.strat()

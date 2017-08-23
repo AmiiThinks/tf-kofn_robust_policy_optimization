@@ -172,86 +172,71 @@ class RegretTablePr(RegretTable):
             **kwargs
         )
 
-    # TODO Regret updates can be done in parallel
-    # TODO Reuse the same MDP state to avoid unrolling every time
-    # this function is called.
-    def cfr_update(self, initial_state_distribution=None):
-        last_regret_update = None
-        pr_mdp_state = PrMdpState(
-            self.mdp,
-            initial_state_distribution,
-            name='PrMdpState_cfr_update'
-        )
-        pr_mdp_state.sequences.initializer.run()
+    def cfr_update(self, unrolled_pr_mdp_state_sequences):
+        regret_updates = []
         current_cf_state_values = None
         strat = tf.reshape(
             self.strat(),
             [-1, self.mdp.num_states(), self.mdp.num_actions()]
         )
-
-        with tf.control_dependencies([pr_mdp_state.unroll()]):
-            action_rewards_weighted_by_chance = tf.squeeze(
-                tf.reduce_sum(
-                    pr_mdp_state.sequences * self.mdp.rewards,
-                    axis=3
-                )
+        action_rewards_weighted_by_chance = tf.squeeze(
+            tf.reduce_sum(
+                unrolled_pr_mdp_state_sequences * self.mdp.rewards,
+                axis=3
             )
-            for t in range(self.mdp.horizon - 1, -1, -1):
-                n = self.mdp.num_pr_prefixes(t - 1)
-                next_n = self.mdp.num_pr_prefixes(t)
-                current_rewards = action_rewards_weighted_by_chance[
-                    n:next_n,
-                    :,
-                    :
-                ]
-                if current_cf_state_values is None:
-                    current_cf_action_values = current_rewards
-                else:
-                    current_cf_action_values = (
-                        current_rewards +
-                        tf.reshape(
-                            tf.reduce_sum(
-                                current_cf_state_values,
-                                axis=1
-                            ),
-                            [
-                                -1,
-                                self.mdp.num_states(),
-                                self.mdp.num_actions()
-                            ]
-                        )
-                    )
-
-                current_cf_state_values = tf.expand_dims(
-                    # TODO Should be able to do this with tensordot
-                    # but it didn't work the first way I tried.
-                    tf.reduce_sum(
-                        (
-                            strat[n:next_n, :, :] *
-                            current_cf_action_values
+        )
+        for t in range(self.mdp.horizon - 1, -1, -1):
+            n = self.mdp.num_pr_prefixes(t - 1)
+            next_n = self.mdp.num_pr_prefixes(t)
+            current_rewards = action_rewards_weighted_by_chance[
+                n:next_n,
+                :,
+                :
+            ]
+            if current_cf_state_values is None:
+                current_cf_action_values = current_rewards
+            else:
+                current_cf_action_values = (
+                    current_rewards +
+                    tf.reshape(
+                        tf.reduce_sum(
+                            current_cf_state_values,
+                            axis=1
                         ),
-                        axis=2
+                        [
+                            -1,
+                            self.mdp.num_states(),
+                            self.mdp.num_actions()
+                        ]
+                    )
+                )
+
+            current_cf_state_values = tf.expand_dims(
+                # TODO Should be able to do this with tensordot
+                # but it didn't work the first way I tried.
+                tf.reduce_sum(
+                    (
+                        strat[n:next_n, :, :] *
+                        current_cf_action_values
                     ),
                     axis=2
-                )
-                cf_regrets = (
-                    current_cf_action_values -
-                    current_cf_state_values
-                )
-                d = [cf_regrets]
-                if last_regret_update is not None:
-                    d.append(last_regret_update)
-
-                with tf.control_dependencies(d):
-                    last_regret_update = (
-                        self.updated_regrets_at_timestep(
-                            t,
-                            tf.reshape(
-                                cf_regrets,
-                                [-1, self.mdp.num_actions()]
-                            )
-                        )
+                ),
+                axis=2
+            )
+            cf_regrets = (
+                current_cf_action_values - current_cf_state_values
+            )
+            regret_updates.append(
+                self.updated_regrets_at_timestep(
+                    t,
+                    tf.reshape(
+                        cf_regrets,
+                        [-1, self.mdp.num_actions()]
                     )
+                )
+            )
+        with tf.control_dependencies(regret_updates[:-1]):
+            last_regret_update = tf.identity(regret_updates[-1])
         return (
             last_regret_update,
             tf.reduce_sum(current_cf_state_values)

@@ -416,7 +416,9 @@ class PrMdpStateTest(tf.test.TestCase):
             rewards = tf.ones((num_states, num_actions, num_states))
 
             mdp = FixedHorizonMdp(horizon, transition_model, rewards)
-            x_root = l1_projection_to_simplex(tf.constant([1, 1, 1.0]))
+            x_root = l1_projection_to_simplex(
+                tf.constant([1, 1, 1.0])
+            )
             patient = PrMdpState(mdp, x_root)
 
             uniform_random_strat = tf.transpose(
