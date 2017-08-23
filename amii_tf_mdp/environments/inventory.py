@@ -55,6 +55,13 @@ class InventoryMdpGenerator(object):
         prob_of_demand_when_inventory_clears,
         prob_of_demand_when_inventory_remains
     ):
+        '''
+        This function is really slow right now since it uses nested loops.
+        It could almost certainly be rewritten to use faster numpy or
+        tensorflow matrix manipulation routines, but since it only needs to
+        called once at the start of the experiments I'm doing now that require
+        a single "true" MDP, I'll leave this as is for now.
+        '''
         R = []
         T = []
         for s in range(self.num_states()):
