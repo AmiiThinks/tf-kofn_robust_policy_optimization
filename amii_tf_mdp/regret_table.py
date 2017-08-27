@@ -131,6 +131,16 @@ class RegretTable(object):
             l1_projection_to_simplex(tf.transpose(self.regrets))
         )
 
+    def updated_regrets(self, inst_regrets, **kwargs):
+        '''
+        Params:
+        - inst_regrets: Rank-2 Tensor (|S| by |A|).
+
+        Returns:
+        - Update node.
+        '''
+        return tf.assign_add(self.regrets, inst_regrets, **kwargs)
+
 
 class RegretTableIr(RegretTable):
     @classmethod
@@ -211,11 +221,25 @@ class RegretTablePr(RegretTable):
         )
 
     def cfr_update(self, unrolled_pr_mdp_state_sequence_rewards):
-        regret_updates = []
+        return self.updated_regrets(
+            self.instantaneous_regrets(
+                unrolled_pr_mdp_state_sequence_rewards
+            )
+        )
+
+    def instantaneous_regrets(
+        self,
+        unrolled_pr_mdp_state_sequence_rewards
+    ):
+        inst_regret_blocks = []
         current_cf_state_values = None
         strat = tf.reshape(
             self.strat(),
-            [-1, self.num_states(), self.num_actions()]
+            [
+                self.num_pr_prefixes(self.horizon() - 1),
+                self.num_states(),
+                self.num_actions()
+            ]
         )
         action_rewards_weighted_by_chance = tf.squeeze(
             tf.reduce_sum(
@@ -241,11 +265,7 @@ class RegretTablePr(RegretTable):
                             current_cf_state_values,
                             axis=1
                         ),
-                        [
-                            -1,
-                            self.num_states(),
-                            self.num_actions()
-                        ]
+                        current_rewards.shape
                     )
                 )
 
@@ -264,24 +284,29 @@ class RegretTablePr(RegretTable):
             cf_regrets = (
                 current_cf_action_values - current_cf_state_values
             )
-            regret_updates.append(
-                self.updated_regrets_at_timestep(
-                    t,
-                    tf.reshape(
-                        cf_regrets,
-                        [-1, self.num_actions()]
-                    )
-                )
-            )
-        with tf.control_dependencies(regret_updates[:-1]):
-            last_regret_update = tf.identity(regret_updates[-1])
-        return (
-            last_regret_update,
-            tf.reduce_sum(current_cf_state_values)
+            inst_regret_blocks.append(cf_regrets)
+        inst_regret_blocks.reverse()
+        return tf.reshape(
+            tf.concat(inst_regret_blocks, axis=0),
+            self.regrets.shape
         )
 
 
 class RegretMatchingPlusMixin(object):
+    def updated_regrets(self, inst_regrets, **kwargs):
+        '''
+        Params:
+        - inst_regrets: Rank-2 Tensor (|S| by |A|).
+
+        Returns:
+        - Update node.
+        '''
+        return tf.assign_add(
+            self.regrets,
+            tf.maximum(0.0, inst_regrets),
+            **kwargs
+        )
+
     def updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
         node = super(
             RegretMatchingPlusMixin,

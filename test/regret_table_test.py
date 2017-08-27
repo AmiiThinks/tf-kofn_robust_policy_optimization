@@ -301,38 +301,41 @@ class RegretTableTest(tf.test.TestCase):
                 ).eval()
                 self.assertAlmostEqual(0.78666484, x_ev)
 
-                update_regrets, ev = patient.cfr_update(
+                update_regrets = patient.cfr_update(
                     unrolled_sequences
                 )
-
-                self.assertAlmostEqual(x_ev, ev.eval(), places=5)
-
                 sess.run(update_regrets)
 
-                update_regrets, ev = patient.cfr_update(
+                update_regrets = patient.cfr_update(
                     unrolled_sequences
                 )
                 self.assertGreater(
                     pr_mdp_state.expected_value(
                         patient.strat()
                     ).eval(),
-                    ev.eval()
+                    x_ev
                 )
                 sess.run(update_regrets)
 
-                update_regrets, ev = patient.cfr_update(
+                update_regrets = patient.cfr_update(
                     unrolled_sequences
                 )
                 self.assertGreater(
                     pr_mdp_state.expected_value(
                         patient.strat()
                     ).eval(),
-                    ev.eval()
+                    x_ev
                 )
                 sess.run(update_regrets)
 
                 br_strat, br_ev = pr_mdp_state.best_response()
-                self.assertAlmostEqual(br_ev.eval(), ev.eval())
+                self.assertAlmostEqual(
+                    br_ev.eval(),
+                    pr_mdp_state.expected_value(
+                        patient.strat()
+                    ).eval(),
+                    places=6
+                )
 
 
 if __name__ == '__main__':
