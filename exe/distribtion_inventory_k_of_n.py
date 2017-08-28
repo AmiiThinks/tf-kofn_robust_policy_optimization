@@ -13,7 +13,7 @@ def sample_mdp(max_inventory=29, horizon=2):
     g = InventoryMdpGenerator(max_inventory, 0.5, 1, 1.1)
     mdp = g.mdp(
         *g.fraction_of_max_inventory_gaussian_demand(
-            np.random.uniform(low=0.0, high=1.0, size=1)[0]
+            np.random.uniform(low=3.0, high=7.0, size=1)[0]
         )
     )
     return FixedHorizonMdp.upgrade(horizon, mdp)
@@ -74,7 +74,7 @@ def sample():
 
 
 T = 50
-num_eval_mdps = 200
+num_eval_mdps = 100
 n_weights = [0.0, 0.0, 1.0]
 state = None
 

@@ -50,7 +50,7 @@ class InventoryMdpGenerator(object):
             min(mean, self.max_inventory - mean) / 3.0
         )
 
-    def mdp(
+    def transition_and_rewards(
         self,
         prob_of_demand_when_inventory_clears,
         prob_of_demand_when_inventory_remains
@@ -88,6 +88,17 @@ class InventoryMdpGenerator(object):
                         )
         T = T / T.sum(axis=2)
         T[np.isnan(T)] = 0.0
+        return (T, R)
+
+    def mdp(
+        self,
+        prob_of_demand_when_inventory_clears,
+        prob_of_demand_when_inventory_remains
+    ):
+        T, R = self.transition_and_rewards(
+            prob_of_demand_when_inventory_clears,
+            prob_of_demand_when_inventory_remains
+        )
         return Mdp(
             tf.constant(T, dtype=tf.float32),
             tf.constant(R, dtype=tf.float32)
