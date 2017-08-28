@@ -62,42 +62,33 @@ class InventoryMdpGenerator(object):
         called once at the start of the experiments I'm doing now that require
         a single "true" MDP, I'll leave this as is for now.
         '''
-        R = []
-        T = []
-        for s in range(self.num_states()):
-            R_s = []
-            T_s = []
-            for a in range(self.num_actions()):
-                R_s_a = []
-                T_s_a = []
-                for s_prime in range(self.num_states()):
-                    usable_inventory = min(s + a, self.max_inventory)
-                    d = usable_inventory - s_prime
-                    if d < 0:
-                        T_s_a.append(0.0)
-                        R_s_a.append(0.0)
-                    else:
-                        if s_prime < 1:
-                            prob_d = prob_of_demand_when_inventory_clears(d)
-                        else:
-                            prob_d = prob_of_demand_when_inventory_remains(d)
-                        T_s_a.append(prob_d)
+        resale_cost = self.resale_cost()
+        maintenance_cost = self.maintenance_cost()
+        num_states = self.num_states()
+        num_actions = self.num_actions()
 
-                        reward = (
-                            self.resale_cost() * d -
-                            self.wholesale_cost * a -
-                            self.maintenance_cost() * s_prime
+        R = np.zeros([num_states, num_actions, num_states])
+        T = np.zeros([num_states, num_actions, num_states])
+        for s in range(num_states):
+            for a in range(num_actions):
+                usable_inventory = min(s + a, self.max_inventory)
+                restocking_cost = self.wholesale_cost * a
+                for s_prime in range(num_states):
+                    if usable_inventory >= s_prime:
+                        d = usable_inventory - s_prime
+                        T[s, a, s_prime] = (
+                            prob_of_demand_when_inventory_clears(d)
+                            if s_prime == 0
+                            else prob_of_demand_when_inventory_remains(d)
                         )
-                        R_s_a.append(reward)
-                R_s.append(R_s_a)
-
-                T_s_a = np.array(T_s_a)
-                T_s_a = T_s_a / T_s_a.sum()
-                T_s_a[np.isnan(T_s_a)] = 0.0
-                T_s.append(T_s_a)
-            R.append(R_s)
-            T.append(T_s)
+                        R[s, a, s_prime] = (
+                            resale_cost * d -
+                            restocking_cost -
+                            maintenance_cost * s_prime
+                        )
+        T = T / T.sum(axis=2)
+        T[np.isnan(T)] = 0.0
         return Mdp(
-            tf.constant(np.array(T), dtype=tf.float32),
-            tf.constant(np.array(R), dtype=tf.float32)
+            tf.constant(T, dtype=tf.float32),
+            tf.constant(R, dtype=tf.float32)
         )

@@ -1,6 +1,5 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
-from ..mdp import PrMdpState
 
 
 def prob_ith_element(n_weights, k_weights):
