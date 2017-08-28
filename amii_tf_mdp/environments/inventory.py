@@ -73,19 +73,19 @@ class InventoryMdpGenerator(object):
             for a in range(num_actions):
                 usable_inventory = min(s + a, self.max_inventory)
                 restocking_cost = self.wholesale_cost * a
-                for s_prime in range(num_states):
-                    if usable_inventory >= s_prime:
-                        d = usable_inventory - s_prime
-                        T[s, a, s_prime] = (
-                            prob_of_demand_when_inventory_clears(d)
-                            if s_prime == 0
-                            else prob_of_demand_when_inventory_remains(d)
-                        )
-                        R[s, a, s_prime] = (
-                            resale_cost * d -
-                            restocking_cost -
-                            maintenance_cost * s_prime
-                        )
+
+                T[s, a, 0] = prob_of_demand_when_inventory_clears(
+                    usable_inventory
+                )
+                R[s, a, 0] = resale_cost * usable_inventory - restocking_cost
+                for s_prime in range(1, usable_inventory + 1):
+                    d = usable_inventory - s_prime
+                    T[s, a, s_prime] = prob_of_demand_when_inventory_remains(d)
+                    R[s, a, s_prime] = (
+                        resale_cost * d -
+                        restocking_cost -
+                        maintenance_cost * s_prime
+                    )
         T = T / T.sum(axis=2)
         T[np.isnan(T)] = 0.0
         return (T, R)

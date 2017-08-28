@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import random
 import numpy as np
 import tensorflow as tf
 from amii_tf_mdp.environments.inventory import InventoryMdpGenerator
@@ -56,64 +56,55 @@ def train_and_eval(sess, T, n_weights, k_weights, sample_mdp, num_eval_mdps):
 def sample():
     global state
     global sampled_mdps
-    global _i
-    global sess
-    mdp = sampled_mdps[_i]
-    _i += 1
+    random.shuffle(sampled_mdps)
+    mdp = sampled_mdps[0]
     if state is None:
         state = PrMdpState(mdp)
         state.sequences.initializer.run()
     else:
-        with tf.device('/cpu:0'):
-            state.mdp.transition_model = tf.identity(
-                state.mdp.transition_model
-            )
-            state.mdp.rewards = tf.identity(state.mdp.rewards)
         state.mdp = mdp
     return state
 
 
-T = 50
+T = 100
 num_eval_mdps = 100
-n_weights = [0.0, 0.0, 1.0]
+n_weights = [0.0] * 9 + [1.0]
 state = None
 
-config = tf.ConfigProto(log_device_placement=True)
-# config = tf.ConfigProto()
+# config = tf.ConfigProto(log_device_placement=True)
+config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 with tf.Session(config=config) as sess:
     with sess.as_default():
         with tf.device('/cpu:0'):
-            num_sampled_mdps = T * len(n_weights) + num_eval_mdps
+            # num_sampled_mdps = T * len(n_weights) + num_eval_mdps
+            num_sampled_mdps = num_eval_mdps
             print('# Sampling {} MDPs'.format(num_sampled_mdps))
             sampled_mdps = [sample_mdp() for _ in range(num_sampled_mdps)]
 
-        _i = 0
         train_and_eval(
             sess,
             T,
             n_weights,
-            [1.0, 0.0, 0.0],
+            [1.0] + [0.0] * 9,
             sample,
             num_eval_mdps
         )
 
-        _i = 0
         train_and_eval(
             sess,
             T,
             n_weights,
-            [0.0, 0.0, 1.0],
+            [0.0] * 9 + [1.0],
             sample,
             num_eval_mdps
         )
 
-        _i = 0
         train_and_eval(
             sess,
             T,
             n_weights,
-            [1.0, 1.0, 1.0],
+            [1.0] * 10,
             sample,
             num_eval_mdps
         )
