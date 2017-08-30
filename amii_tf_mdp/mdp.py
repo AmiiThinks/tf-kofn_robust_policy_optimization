@@ -8,6 +8,18 @@ from amii_tf_nn.projection import l1_projection_to_simplex
 
 
 class Mdp(object):
+    @staticmethod
+    def mean(mdps):
+        z = float(len(mdps))
+        mean_transition_model = mdps[0].transition_model / z
+        mean_rewards = mdps[0].rewards / z
+        for i in range(1, len(mdps)):
+            mean_transition_model = (
+                mean_transition_model + mdps[i].transition_model / z
+            )
+            mean_rewards = mean_rewards + mdps[i].rewards / z
+        return Mdp(mean_transition_model, mean_rewards)
+
     def __init__(self, transition_model, rewards):
         '''
 
@@ -64,6 +76,10 @@ class FixedHorizonMdp(Mdp):
             *args,
             **kwargs
         )
+
+    @staticmethod
+    def mean(mdps):
+        return FixedHorizonMdp.upgrade(mdps[0].horizon, Mdp.mean(mdps))
 
     def __init__(self, horizon, *args, **kwargs):
         super(FixedHorizonMdp, self).__init__(*args, **kwargs)
