@@ -3,7 +3,7 @@ import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
 from amii_tf_mdp.regret_table import RegretTable, \
     RegretMatchingPlusPr, RegretTablePr
-from amii_tf_mdp.mdp import FixedHorizonMdp, PrMdpState
+from amii_tf_mdp.mdp import FixedHorizonMdp, PrUncertainMdp
 
 
 class RegretTableTest(tf.test.TestCase):
@@ -284,7 +284,7 @@ class RegretTableTest(tf.test.TestCase):
                 tf.constant([1, 1, 1.0])
             )
 
-            pr_mdp_state = PrMdpState(mdp, x_root)
+            pr_mdp_state = PrUncertainMdp(mdp, x_root)
             pr_mdp_state.sequences.initializer.run()
             unrolled_sequences = sess.run(
                 pr_mdp_state.unroll() * mdp.rewards

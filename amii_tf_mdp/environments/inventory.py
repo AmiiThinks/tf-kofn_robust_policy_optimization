@@ -1,4 +1,4 @@
-from ..mdp import Mdp
+from ..mdp import MdpAnchor
 from scipy.stats import norm
 import numpy as np
 import tensorflow as tf
@@ -56,11 +56,8 @@ class InventoryMdpGenerator(object):
         prob_of_demand_when_inventory_remains
     ):
         '''
-        This function is really slow right now since it uses nested loops.
-        It could almost certainly be rewritten to use faster numpy or
-        tensorflow matrix manipulation routines, but since it only needs to
-        called once at the start of the experiments I'm doing now that require
-        a single "true" MDP, I'll leave this as is for now.
+        TODO This function is really slow right now since it uses nested
+        loops and isn't in TensorFlow.
         '''
         resale_cost = self.resale_cost()
         maintenance_cost = self.maintenance_cost()
@@ -89,17 +86,3 @@ class InventoryMdpGenerator(object):
         T = T / T.sum(axis=2)
         T[np.isnan(T)] = 0.0
         return (T, R)
-
-    def mdp(
-        self,
-        prob_of_demand_when_inventory_clears,
-        prob_of_demand_when_inventory_remains
-    ):
-        T, R = self.transition_and_rewards(
-            prob_of_demand_when_inventory_clears,
-            prob_of_demand_when_inventory_remains
-        )
-        return Mdp(
-            tf.constant(T, dtype=tf.float32),
-            tf.constant(R, dtype=tf.float32)
-        )
