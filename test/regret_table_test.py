@@ -2,8 +2,8 @@ import tensorflow as tf
 import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
 from amii_tf_mdp.regret_table import RegretTable, \
-    RegretMatchingPlusPr, RegretTablePr
-from amii_tf_mdp.mdp import FixedHorizonMdp, PrUncertainMdp
+    PrRegretMatchingPlus, PrRegretTable
+from amii_tf_mdp.mdp import PrUncertainMdp
 
 
 class RegretTableTest(tf.test.TestCase):
@@ -251,18 +251,20 @@ class RegretTableTest(tf.test.TestCase):
             num_states = 3
             num_actions = 2
 
-            transition_model = tf.transpose(
-                l1_projection_to_simplex(
-                    np.random.normal(
-                        size=(
-                            num_states,
-                            num_actions,
-                            num_states
+            transition_model = sess.run(
+                tf.transpose(
+                    l1_projection_to_simplex(
+                        np.random.normal(
+                            size=(
+                                num_states,
+                                num_actions,
+                                num_states
+                            )
                         )
                     )
                 )
             )
-            rewards = (
+            rewards = sess.run(
                 np.random.uniform(
                     size=(num_states, num_actions, num_states)
                 ) *
@@ -279,61 +281,94 @@ class RegretTableTest(tf.test.TestCase):
                     )
                 )
             )
-            mdp = FixedHorizonMdp(horizon, transition_model, rewards)
-            x_root = l1_projection_to_simplex(
-                tf.constant([1, 1, 1.0])
-            )
+            x_root = sess.run(l1_projection_to_simplex(tf.ones([3])))
 
-            pr_mdp_state = PrUncertainMdp(mdp, x_root)
-            pr_mdp_state.sequences.initializer.run()
-            unrolled_sequences = sess.run(
-                pr_mdp_state.unroll() * mdp.rewards
-            )
+            state = PrUncertainMdp(horizon, num_states, num_actions)
+            sess.run(tf.global_variables_initializer())
 
             for patient in [
-                RegretTablePr.from_mdp(mdp),
-                RegretMatchingPlusPr.from_mdp(mdp)
+                PrRegretTable.from_mdp(state),
+                PrRegretMatchingPlus.from_mdp(state)
             ]:
                 patient.regrets.initializer.run()
 
-                x_ev = pr_mdp_state.expected_value(
-                    patient.strat()
-                ).eval()
+                sess.run(
+                    state.unroll,
+                    feed_dict={
+                        state.transition_model: transition_model,
+                        state.root: x_root,
+                        state.strat: sess.run(patient.strat)
+                    }
+                )
+                x_ev = sess.run(
+                    state.expected_value,
+                    feed_dict={state.rewards: rewards}
+                )
                 self.assertAlmostEqual(0.78666484, x_ev)
 
-                update_regrets = patient.cfr_update(
-                    unrolled_sequences
+                sess.run(
+                    state.unroll,
+                    feed_dict={
+                        state.transition_model: transition_model,
+                        state.root: x_root
+                    }
                 )
-                sess.run(update_regrets)
+                sess.run(
+                    patient.cfr_update,
+                    feed_dict={state.rewards: rewards}
+                )
+                sess.run(
+                    state.unroll,
+                    feed_dict={
+                        state.transition_model: transition_model,
+                        state.root: x_root,
+                        state.strat: sess.run(patient.strat)
+                    }
+                )
+                next_ev = sess.run(
+                    state.expected_value,
+                    feed_dict={state.rewards: rewards}
+                )
+                self.assertGreater(next_ev, x_ev)
 
-                update_regrets = patient.cfr_update(
-                    unrolled_sequences
+                sess.run(
+                    state.unroll,
+                    feed_dict={
+                        state.transition_model: transition_model,
+                        state.root: x_root
+                    }
                 )
-                self.assertGreater(
-                    pr_mdp_state.expected_value(
-                        patient.strat()
-                    ).eval(),
-                    x_ev
+                sess.run(
+                    patient.cfr_update,
+                    feed_dict={state.rewards: rewards}
                 )
-                sess.run(update_regrets)
+                sess.run(
+                    state.unroll,
+                    feed_dict={
+                        state.transition_model: transition_model,
+                        state.root: x_root,
+                        state.strat: sess.run(patient.strat)
+                    }
+                )
+                next_ev = sess.run(
+                    state.expected_value,
+                    feed_dict={state.rewards: rewards}
+                )
+                self.assertGreater(next_ev, x_ev)
 
-                update_regrets = patient.cfr_update(
-                    unrolled_sequences
+                sess.run(
+                    state.unroll,
+                    feed_dict={
+                        state.transition_model: transition_model,
+                        state.root: x_root
+                    }
                 )
-                self.assertGreater(
-                    pr_mdp_state.expected_value(
-                        patient.strat()
-                    ).eval(),
-                    x_ev
-                )
-                sess.run(update_regrets)
-
-                br_strat, br_ev = pr_mdp_state.best_response()
                 self.assertAlmostEqual(
-                    br_ev.eval(),
-                    pr_mdp_state.expected_value(
-                        patient.strat()
-                    ).eval(),
+                    sess.run(
+                        state.br_value,
+                        feed_dict={state.rewards: rewards}
+                    ),
+                    next_ev,
                     places=6
                 )
 

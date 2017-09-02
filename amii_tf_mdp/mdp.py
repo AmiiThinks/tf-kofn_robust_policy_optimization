@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 from .probability_utils import prob_next_state, prob_state_given_action
 from .reward_utils import reward_distribution
 from .sequence_utils import num_pr_sequences, \
