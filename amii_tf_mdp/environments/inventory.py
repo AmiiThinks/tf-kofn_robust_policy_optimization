@@ -1,7 +1,5 @@
-from ..mdp import MdpAnchor
 from scipy.stats import norm
 import numpy as np
-import tensorflow as tf
 
 
 class InventoryMdpGenerator(object):

@@ -21,49 +21,27 @@ def prob_ith_element(n_weights, k_weights):
 
 
 class KofnGadget(object):
-    def __init__(self, n_weights, k_weights, mdp_sampler):
-        '''
-
-        Params:
-        - n_weights
-        - k_weights
-        - mdp_sampler: Function that returns MDP states.
-        '''
+    def __init__(self, n_weights, k_weights, mdps):
         self.i_weights = prob_ith_element(n_weights, k_weights)
-        self.mdp_sampler = mdp_sampler
-
-    def max_num_mdps(self): return self.i_weights.shape[0].value
-
-
-class PrKofnGadget(KofnGadget):
-    def __call__(self, strat, update):
-        sampled_mdps = [self.mdp_sampler() for _ in range(self.max_num_mdps())]
-        evs = tf.stack(
-            [state.expected_value(strat) for state in sampled_mdps],
-            axis=0
-        )
+        self.mdps = mdps
+        self.evs = tf.stack([state.expected_value for state in mdps], axis=0)
         # Sort in descending order
         _, sorted_mdp_indices = tf.nn.top_k(
-            evs,
-            k=evs.shape[-1].value,
+            self.evs,
+            k=self.evs.shape[-1].value,
             sorted=True
         )
         # Sorted in ascending order
-        sorted_mdp_indices = tf.reverse(sorted_mdp_indices, [0])
-        mdp_weights = tf.scatter_nd(
-            tf.expand_dims(sorted_mdp_indices, dim=1),
+        self.sorted_mdp_indices = tf.reverse(sorted_mdp_indices, [0])
+        self.mdp_weights = tf.scatter_nd(
+            tf.expand_dims(self.sorted_mdp_indices, dim=1),
             self.i_weights,
             [self.max_num_mdps()]
         )
-        unrolled_weighted_rewards = [
-            (
-                sampled_mdps[i].unroll() *
-                sampled_mdps[i].mdp.rewards *
-                mdp_weights[i]
-            )
+        self.weighted_rewards = [
+            mdps[i].sequences * mdps[i].rewards * self.mdp_weights[i]
             for i in range(self.max_num_mdps())
         ]
-        return (
-            update(unrolled_weighted_rewards),
-            tf.tensordot(evs, mdp_weights, 1)
-        )
+        self.expected_value = tf.tensordot(self.evs, self.mdp_weights, 1)
+
+    def max_num_mdps(self): return self.i_weights.shape[0].value
