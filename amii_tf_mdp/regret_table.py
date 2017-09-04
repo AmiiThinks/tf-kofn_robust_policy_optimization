@@ -102,21 +102,12 @@ class RegretTable(object):
             mdp.horizon,
             mdp.num_states(),
             mdp.num_actions(),
-            mdp.sequences * mdp.rewards,
             name=name
         )
 
-    def __init__(
-        self,
-        horizon,
-        num_states,
-        num_actions,
-        weighted_sequence_rewards,
-        name=None
-    ):
+    def __init__(self, horizon, num_states, num_actions, name=None):
         self._horizon = horizon
         self._num_states = num_states
-        self.weighted_sequence_rewards = weighted_sequence_rewards
         self.regrets = self.__class__.new_table(
             horizon,
             num_states,
@@ -126,8 +117,6 @@ class RegretTable(object):
         self.strat = tf.transpose(
             l1_projection_to_simplex(tf.transpose(self.regrets))
         )
-        self.instantaneous_regrets = self._instantaneous_regrets()
-        self.cfr_update = self.updated_regrets(self.instantaneous_regrets)
 
     def horizon(self): return self._horizon
     def num_states(self): return self._num_states
@@ -189,7 +178,7 @@ class PrRegretTable(RegretTable):
             **kwargs
         )
 
-    def _instantaneous_regrets(self):
+    def instantaneous_regrets(self, weighted_sequence_rewards):
         inst_regret_blocks = []
         current_cf_state_values = None
         strat = tf.reshape(
@@ -202,7 +191,7 @@ class PrRegretTable(RegretTable):
         )
         action_rewards_weighted_by_chance = tf.squeeze(
             tf.reduce_sum(
-                self.weighted_sequence_rewards,
+                weighted_sequence_rewards,
                 axis=3
             )
         )

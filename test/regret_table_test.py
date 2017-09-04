@@ -3,7 +3,8 @@ import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
 from amii_tf_mdp.regret_table import RegretTable, \
     PrRegretMatchingPlus, PrRegretTable
-from amii_tf_mdp.mdp import PrUncertainMdp
+from amii_tf_mdp.pr_uncertain_mdp import PrUncertainMdp
+from amii_tf_mdp.tf_node import BoundTfNode
 
 
 class RegretTableTest(tf.test.TestCase):
@@ -286,88 +287,66 @@ class RegretTableTest(tf.test.TestCase):
             state = PrUncertainMdp(horizon, num_states, num_actions)
             sess.run(tf.global_variables_initializer())
 
+            weighted_rewards_node = state.bound_sequences_node(
+                transition_model,
+                root=x_root
+            )
+            weighted_rewards_node.components[0] = (
+                weighted_rewards_node.components[0] * rewards
+            )
+
             for patient in [
                 PrRegretTable.from_mdp(state),
                 PrRegretMatchingPlus.from_mdp(state)
             ]:
                 patient.regrets.initializer.run()
 
-                sess.run(
-                    state.unroll,
-                    feed_dict={
-                        state.transition_model: transition_model,
-                        state.root: x_root,
-                        state.strat: sess.run(patient.strat)
-                    }
+                ev_node = state.bound_expected_value_node(
+                    transition_model,
+                    rewards,
+                    root=x_root,
+                    strat=sess.run(patient.strat)
                 )
-                x_ev = sess.run(
-                    state.expected_value,
-                    feed_dict={state.rewards: rewards}
-                )
+                x_ev = ev_node.run(sess)[0]
                 self.assertAlmostEqual(0.78666484, x_ev)
 
-                sess.run(
-                    state.unroll,
-                    feed_dict={
-                        state.transition_model: transition_model,
-                        state.root: x_root
-                    }
+                patient_cfr_update = BoundTfNode(
+                    [
+                        patient.updated_regrets(
+                            patient.instantaneous_regrets(
+                                weighted_rewards_node.components[0]
+                            )
+                        )
+                    ],
+                    weighted_rewards_node.feed_dict
                 )
-                sess.run(
-                    patient.cfr_update,
-                    feed_dict={state.rewards: rewards}
+                patient_cfr_update.run(sess)
+
+                next_ev_node = state.bound_expected_value_node(
+                    transition_model,
+                    rewards,
+                    root=x_root,
+                    strat=sess.run(patient.strat)
                 )
-                sess.run(
-                    state.unroll,
-                    feed_dict={
-                        state.transition_model: transition_model,
-                        state.root: x_root,
-                        state.strat: sess.run(patient.strat)
-                    }
+                self.assertGreater(next_ev_node.run(sess)[0], x_ev)
+
+                patient_cfr_update.run(sess)
+
+                next_ev_node = state.bound_expected_value_node(
+                    transition_model,
+                    rewards,
+                    root=x_root,
+                    strat=sess.run(patient.strat)
                 )
-                next_ev = sess.run(
-                    state.expected_value,
-                    feed_dict={state.rewards: rewards}
-                )
+                next_ev = next_ev_node.run(sess)[0]
                 self.assertGreater(next_ev, x_ev)
 
-                sess.run(
-                    state.unroll,
-                    feed_dict={
-                        state.transition_model: transition_model,
-                        state.root: x_root
-                    }
-                )
-                sess.run(
-                    patient.cfr_update,
-                    feed_dict={state.rewards: rewards}
-                )
-                sess.run(
-                    state.unroll,
-                    feed_dict={
-                        state.transition_model: transition_model,
-                        state.root: x_root,
-                        state.strat: sess.run(patient.strat)
-                    }
-                )
-                next_ev = sess.run(
-                    state.expected_value,
-                    feed_dict={state.rewards: rewards}
-                )
-                self.assertGreater(next_ev, x_ev)
-
-                sess.run(
-                    state.unroll,
-                    feed_dict={
-                        state.transition_model: transition_model,
-                        state.root: x_root
-                    }
-                )
                 self.assertAlmostEqual(
-                    sess.run(
-                        state.br_value,
-                        feed_dict={state.rewards: rewards}
-                    ),
+                    state.bound_br_value_node(
+                        transition_model,
+                        rewards,
+                        root=x_root
+                    ).run(sess)[0],
                     next_ev,
                     places=6
                 )
