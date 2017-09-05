@@ -306,7 +306,7 @@ class RegretTableTest(tf.test.TestCase):
                     strat=sess.run(patient.strat)
                 )
                 x_ev = ev_node.run(sess)
-                self.assertAlmostEqual(0.78666484, x_ev)
+                self.assertAlmostEqual(0.78666484, x_ev, places=6)
 
                 patient_cfr_update = BoundTfNode(
                     [

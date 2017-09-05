@@ -65,9 +65,7 @@ class PrUncertainMdp(object):
             return d
 
         self.unbound_expected_value = UnboundTfNode(
-            tf.reduce_sum(
-                self.unbound_sequences.component * self.rewards
-            ),
+            self._expected_value(),
             expected_value_feed_dict_generator
         )
         best_response, br_value = self._best_response()
@@ -126,29 +124,74 @@ class PrUncertainMdp(object):
         return int(self.num_pr_sequences(t) / self.num_states())
 
     def _unroll(self):
-        strat = self.strat[:self.num_pr_sequences(0), :]
         sequence_blocks = [
             prob_next_sequence_state_action_and_next_state(
                 self.transition_model,
                 tf.reshape(self.root, (1, 1, self.root.shape[0].value)),
-                strat=strat,
                 num_actions=self.num_actions()
             )
         ]
         for t in range(1, self.horizon):
-            strat = self.strat[
-                self.num_pr_sequences(t - 1):self.num_pr_sequences(t),
-                :
-            ]
             sequence_blocks.append(
                 prob_next_sequence_state_action_and_next_state(
                     self.transition_model,
                     sequence_blocks[-1],
-                    strat=strat,
                     num_actions=self.num_actions()
                 )
             )
         return tf.concat(sequence_blocks, axis=0)
+
+    def _expected_value(self):
+        current_cf_state_values = None
+        strat = tf.reshape(
+            self.strat,
+            [
+                self.num_pr_prefixes(self.horizon - 1),
+                self.num_states(),
+                self.num_actions()
+            ]
+        )
+        action_rewards_weighted_by_chance = tf.squeeze(
+            tf.reduce_sum(
+                self.unbound_sequences.component * self.rewards,
+                axis=3
+            )
+        )
+        for t in range(self.horizon - 1, -1, -1):
+            n = self.num_pr_prefixes(t - 1)
+            next_n = self.num_pr_prefixes(t)
+            current_rewards = action_rewards_weighted_by_chance[
+                n:next_n,
+                :,
+                :
+            ]
+            if current_cf_state_values is None:
+                current_cf_action_values = current_rewards
+            else:
+                current_cf_action_values = (
+                    current_rewards +
+                    tf.reshape(
+                        tf.reduce_sum(
+                            current_cf_state_values,
+                            axis=1
+                        ),
+                        current_rewards.shape
+                    )
+                )
+
+            current_cf_state_values = tf.expand_dims(
+                # TODO Should be able to do this with tensordot
+                # but it didn't work the first way I tried.
+                tf.reduce_sum(
+                    (
+                        strat[n:next_n, :, :] *
+                        current_cf_action_values
+                    ),
+                    axis=2
+                ),
+                axis=2
+            )
+        return tf.reduce_sum(current_cf_state_values)
 
     def _best_response(self):
         strat_pieces = []
