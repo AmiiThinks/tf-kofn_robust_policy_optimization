@@ -43,15 +43,15 @@ class TfNodeTest(tf.test.TestCase):
             self.assertAllClose(x_b, b)
 
     def test_bound_tf_node_combine_with_placeholders_incompatible(self):
-        with self.test_session() as sess:
+        with self.test_session():
             c = tf.placeholder(tf.float32, [3])
 
             patient1 = BoundTfNode(
-                [[1.3, 5.3, 8.9] * c],
+                {'patient1': [1.3, 5.3, 8.9] * c},
                 {c: [1, 2, 3.0]}
             )
             patient2 = BoundTfNode(
-                [[3.6, 4.3, 6.1] + c],
+                {'patient2': [3.6, 4.3, 6.1] + c},
                 {c: [11, 2, 3.0]}
             )
             with self.assertRaises(Exception):
@@ -62,15 +62,16 @@ class TfNodeTest(tf.test.TestCase):
             c = tf.placeholder(tf.float32, [3])
 
             patient1 = BoundTfNode(
-                [[1.3, 5.3, 8.9] * c],
+                {'patient1': [1.3, 5.3, 8.9] * c},
                 {c: [1, 2, 3.0]}
             )
             patient2 = BoundTfNode(
-                [[3.6, 4.3, 6.1] + c],
+                {'patient2': [3.6, 4.3, 6.1] + c},
                 {c: [1, 2, 3.0]}
             )
             patient = patient1.combine(patient2)
-            a, b = patient.run(sess)
+            v = patient.run(sess)
+            a, b = v['patient1'], v['patient2']
             self.assertAllClose([1.3, 10.6, 26.7], a)
             self.assertAllClose([4.6, 6.3, 9.1], b)
 
@@ -80,14 +81,38 @@ class TfNodeTest(tf.test.TestCase):
 
             patient1 = UnboundTfNode(
                 [1.3, 5.3, 8.9] * c,
-                lambda c_val: {c: c_val}
+                lambda c_val: {c: c_val},
+                name='patient1'
             )
             patient2 = UnboundTfNode(
                 [3.6, 4.3, 6.1] + c,
-                lambda c_val: {c: c_val}
+                lambda c_val: {c: c_val},
+                name='patient2'
             )
             patient = patient1([1, 2, 3.0]).combine(patient2([1, 2, 3.0]))
-            a, b = patient.run(sess)
+            v = patient.run(sess)
+            a, b = v['patient1'], v['patient2']
+            self.assertAllClose([1.3, 10.6, 26.7], a)
+            self.assertAllClose([4.6, 6.3, 9.1], b)
+
+    def test_unbound_tf_node_combine_with_names_compatible(self):
+        with self.test_session() as sess:
+            c = tf.placeholder(tf.float32, [3])
+
+            patient1 = UnboundTfNode(
+                [1.3, 5.3, 8.9] * c,
+                lambda c_val: {c: c_val},
+                name='patient1'
+            )
+            patient2 = UnboundTfNode(
+                [3.6, 4.3, 6.1] + c,
+                lambda c_val: {c: c_val},
+                name='patient2'
+            )
+            patient = patient1.composable().combine(patient2.composable())
+            n = patient(patient1=[[1, 2, 3.0], {}], patient2=[[1, 2, 3.0], {}])
+            v = n.run(sess)
+            a, b = v['patient1'], v['patient2']
             self.assertAllClose([1.3, 10.6, 26.7], a)
             self.assertAllClose([4.6, 6.3, 9.1], b)
 

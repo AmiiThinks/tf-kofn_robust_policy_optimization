@@ -1,5 +1,6 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
+from amii_tf_mdp.tf_node import UnboundTfNode
 
 
 def prob_ith_element(n_weights, k_weights):
@@ -21,27 +22,114 @@ def prob_ith_element(n_weights, k_weights):
 
 
 class KofnGadget(object):
-    def __init__(self, n_weights, k_weights, mdps):
+    def __init__(self, n_weights, k_weights, mdp_generator):
         self.i_weights = prob_ith_element(n_weights, k_weights)
-        self.mdps = mdps
-        self.evs = tf.stack([state.expected_value for state in mdps], axis=0)
-        # Sort in descending order
-        _, sorted_mdp_indices = tf.nn.top_k(
-            self.evs,
-            k=self.evs.shape[-1].value,
-            sorted=True
-        )
-        # Sorted in ascending order
-        self.sorted_mdp_indices = tf.reverse(sorted_mdp_indices, [0])
-        self.mdp_weights = tf.scatter_nd(
-            tf.expand_dims(self.sorted_mdp_indices, dim=1),
-            self.i_weights,
-            [self.max_num_mdps()]
-        )
-        self.weighted_rewards = [
-            mdps[i].sequences * mdps[i].rewards * self.mdp_weights[i]
-            for i in range(self.max_num_mdps())
+        self.ev_mdps = [mdp_generator() for _ in range(self.max_num_mdps())]
+        self.weighted_reward_mdps = [
+            mdp_generator() for _ in range(self.max_num_mdps())
         ]
-        self.expected_value = tf.tensordot(self.evs, self.mdp_weights, 1)
+        unbound_individual_evs = sum(
+            [
+                self.ev_mdps[i].unbound_expected_value.composable(
+                    'ev{}'.format(i)
+                )
+                for i in range(1, len(self.ev_mdps))
+            ],
+            self.ev_mdps[0].unbound_expected_value.composable('ev0')
+        )
+        unbound_stacked_evs = UnboundTfNode(
+            tf.stack(
+                [mdp.unbound_expected_value.component for mdp in self.ev_mdps],
+                axis=0
+            ),
+            name='evs'
+        )
+        unbound_sorted_mdp_indices = UnboundTfNode(
+            # Sorted in ascending order
+            tf.reverse(
+                # Sort in descending order
+                tf.nn.top_k(
+                    unbound_stacked_evs.component,
+                    k=unbound_stacked_evs.component.shape[-1].value,
+                    sorted=True
+                )[1],
+                [0]
+            ),
+            name='sorted_mdp_indices'
+        )
+        unbound_mdp_weights = UnboundTfNode(
+            tf.scatter_nd(
+                tf.expand_dims(unbound_sorted_mdp_indices.component, dim=1),
+                self.i_weights,
+                [self.max_num_mdps()]
+            ),
+            name='unbound_mdp_weights'
+        )
+        unbound_expected_value = UnboundTfNode(
+            tf.tensordot(
+                unbound_stacked_evs.component,
+                unbound_mdp_weights.component,
+                1
+            ),
+            name='unbound_expected_value'
+        )
+        self.unbound_ev_dependent_nodes = (
+            unbound_individual_evs +
+            unbound_stacked_evs.composable() +
+            unbound_sorted_mdp_indices.composable() +
+            unbound_mdp_weights.composable() +
+            unbound_expected_value.composable()
+        )
+
+        def _weighted_rewards_fdg(mdp):
+            def _f(transition_model, rewards, root=None):
+                d = {
+                    mdp.transition_model: transition_model,
+                    mdp.rewards: rewards
+                }
+                if root is not None:
+                    d[mdp.root] = root
+                return d
+            return _f
+
+        self.unbound_weighted_rewards = [
+            UnboundTfNode(
+                (
+                    self.weighted_reward_mdps[i].unbound_sequences.component *
+                    self.weighted_reward_mdps[i].rewards *
+                    unbound_mdp_weights.component[i]
+                ),
+                feed_dict_generator=_weighted_rewards_fdg(
+                    self.weighted_reward_mdps[i]
+                ),
+                name='weighted_rewards{}'.format(i)
+            ).composable() for i in range(len(self.weighted_reward_mdps))
+        ]
+        self.unbound_weighted_rewards = sum(
+            self.unbound_weighted_rewards[1:],
+            self.unbound_weighted_rewards[0]
+        )
+        self.unbound_nodes = (
+            self.unbound_ev_dependent_nodes +
+            self.unbound_weighted_rewards
+        )
+
+    def bind(self, transition_reward_root_strat_tuples):
+        kwargs = {}
+        for i in range(len(transition_reward_root_strat_tuples)):
+            transition_model, rewards, root, strat = (
+                transition_reward_root_strat_tuples[i]
+            )
+            kwargs['ev{}'.format(i)] = [
+                transition_model,
+                rewards,
+                {'root': root, 'strat': strat}
+            ]
+            kwargs['weighted_rewards{}'.format(i)] = [
+                transition_model,
+                rewards,
+                {'root': root}
+            ]
+        return self.unbound_nodes(**kwargs)
 
     def max_num_mdps(self): return self.i_weights.shape[0].value

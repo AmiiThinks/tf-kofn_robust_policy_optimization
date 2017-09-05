@@ -291,9 +291,7 @@ class RegretTableTest(tf.test.TestCase):
                 transition_model,
                 root=x_root
             )
-            weighted_rewards_node.components[0] = (
-                weighted_rewards_node.components[0] * rewards
-            )
+            weighted_rewards_node.components *= rewards
 
             for patient in [
                 PrRegretTable.from_mdp(state),
@@ -307,14 +305,14 @@ class RegretTableTest(tf.test.TestCase):
                     root=x_root,
                     strat=sess.run(patient.strat)
                 )
-                x_ev = ev_node.run(sess)[0]
+                x_ev = ev_node.run(sess)
                 self.assertAlmostEqual(0.78666484, x_ev)
 
                 patient_cfr_update = BoundTfNode(
                     [
                         patient.updated_regrets(
                             patient.instantaneous_regrets(
-                                weighted_rewards_node.components[0]
+                                weighted_rewards_node.components
                             )
                         )
                     ],
@@ -328,7 +326,7 @@ class RegretTableTest(tf.test.TestCase):
                     root=x_root,
                     strat=sess.run(patient.strat)
                 )
-                self.assertGreater(next_ev_node.run(sess)[0], x_ev)
+                self.assertGreater(next_ev_node.run(sess), x_ev)
 
                 patient_cfr_update.run(sess)
 
@@ -338,7 +336,7 @@ class RegretTableTest(tf.test.TestCase):
                     root=x_root,
                     strat=sess.run(patient.strat)
                 )
-                next_ev = next_ev_node.run(sess)[0]
+                next_ev = next_ev_node.run(sess)
                 self.assertGreater(next_ev, x_ev)
 
                 self.assertAlmostEqual(
@@ -346,7 +344,7 @@ class RegretTableTest(tf.test.TestCase):
                         transition_model,
                         rewards,
                         root=x_root
-                    ).run(sess)[0],
+                    ).run(sess),
                     next_ev,
                     places=6
                 )

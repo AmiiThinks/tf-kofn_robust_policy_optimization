@@ -45,7 +45,7 @@ class PrUncertainMdp(object):
             if root is not None: d[self.root] = root
             if strat is not None: d[self.strat] = strat
             return d
-        self._sequences = UnboundTfNode(
+        self.unbound_sequences = UnboundTfNode(
             self._unroll(),
             sequence_feed_dict_generator
         )
@@ -53,8 +53,8 @@ class PrUncertainMdp(object):
         def expected_value_feed_dict_generator(
             transition_model,
             rewards,
+            strat,
             root=None,
-            strat=None
         ):
             d = sequence_feed_dict_generator(
                 transition_model,
@@ -64,8 +64,10 @@ class PrUncertainMdp(object):
             d[self.rewards] = rewards
             return d
 
-        self._expected_value = UnboundTfNode(
-            tf.reduce_sum(self._sequences.component * self.rewards),
+        self.unbound_expected_value = UnboundTfNode(
+            tf.reduce_sum(
+                self.unbound_sequences.component * self.rewards
+            ),
             expected_value_feed_dict_generator
         )
         best_response, br_value = self._best_response()
@@ -79,37 +81,37 @@ class PrUncertainMdp(object):
             d[self.rewards] = rewards
             return d
 
-        self._best_response = UnboundTfNode(
+        self.unbound_best_response = UnboundTfNode(
             best_response,
             best_resonse_feed_dict_generator
         )
-        self._br_value = UnboundTfNode(
+        self.unbound_br_value = UnboundTfNode(
             br_value,
             best_resonse_feed_dict_generator
         )
 
     def bound_sequences_node(self, transition_model, root=None, strat=None):
-        return self._sequences(transition_model, root=root, strat=strat)
+        return self.unbound_sequences(transition_model, root=root, strat=strat)
 
     def bound_expected_value_node(
         self,
         transition_model,
         rewards,
-        root=None,
-        strat=None
+        strat,
+        root=None
     ):
-        return self._expected_value(
+        return self.unbound_expected_value(
             transition_model,
             rewards,
-            root=root,
-            strat=strat
+            strat,
+            root=root
         )
 
     def bound_best_response_node(self, transition_model, rewards, root=None):
-        return self._best_response(transition_model, rewards, root=root)
+        return self.unbound_best_response(transition_model, rewards, root=root)
 
     def bound_br_value_node(self, transition_model, rewards, root=None):
-        return self._br_value(transition_model, rewards, root=root)
+        return self.unbound_br_value(transition_model, rewards, root=root)
 
     def num_actions(self):
         return self.transition_model.shape[1].value
@@ -154,7 +156,7 @@ class PrUncertainMdp(object):
 
         action_rewards_weighted_by_chance = tf.squeeze(
             tf.reduce_sum(
-                self._sequences.component * self.rewards,
+                self.unbound_sequences.component * self.rewards,
                 axis=3
             )
         )

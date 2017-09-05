@@ -49,7 +49,7 @@ class PrUncertainMdpTest(tf.test.TestCase):
 
             self.assertAllClose(
                 tf.constant(x_update_1).eval(),
-                n.run(sess)[0][:1, :, :, :]
+                n.run(sess)[:1, :, :, :]
             )
             # TODO Check that the rest of the sequences were updated properly.
 
@@ -91,11 +91,11 @@ class PrUncertainMdpTest(tf.test.TestCase):
             n = patient.bound_expected_value_node(
                 transition_model,
                 rewards,
-                root=x_root,
-                strat=uniform_random_strat
+                uniform_random_strat,
+                root=x_root
             )
 
-            self.assertAlmostEqual(2.0, n.run(sess)[0], places=6)
+            self.assertAlmostEqual(2.0, n.run(sess), places=6)
 
     def test_expected_value_can_be_run_repeatedly(self):
         with self.test_session() as sess:
@@ -159,12 +159,12 @@ class PrUncertainMdpTest(tf.test.TestCase):
             n = patient.bound_expected_value_node(
                 transition_model,
                 rewards,
-                root=x_root,
-                strat=uniform_random_strat
+                uniform_random_strat,
+                root=x_root
             )
 
-            self.assertAlmostEqual(-0.62523419, n.run(sess)[0])
-            self.assertAlmostEqual(-0.62523419, n.run(sess)[0])
+            self.assertAlmostEqual(-0.62523419, n.run(sess))
+            self.assertAlmostEqual(-0.62523419, n.run(sess))
 
     def test_best_response(self):
         with self.test_session() as sess:
@@ -213,7 +213,7 @@ class PrUncertainMdpTest(tf.test.TestCase):
                 rewards,
                 root=x_root
             )
-            self.assertAlmostEqual(-0.35074115, n.run(sess)[0])
+            self.assertAlmostEqual(-0.35074115, n.run(sess))
 
     # def test_root_counterfactual_value_is_ev(self):
     #     with self.test_session() as sess:
