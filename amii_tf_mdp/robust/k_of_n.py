@@ -103,22 +103,21 @@ class KofnGadget(object):
                     self.weighted_reward_mdps[i]
                 ),
                 name='weighted_rewards{}'.format(i)
-            ).composable() for i in range(len(self.weighted_reward_mdps))
+            ) for i in range(len(self.weighted_reward_mdps))
         ]
-        self.unbound_weighted_rewards = sum(
-            self.unbound_weighted_rewards[1:],
-            self.unbound_weighted_rewards[0]
-        )
         self.unbound_nodes = (
             self.unbound_ev_dependent_nodes +
-            self.unbound_weighted_rewards
+            sum(
+                [r.composable() for r in self.unbound_weighted_rewards[1:]],
+                self.unbound_weighted_rewards[0].composable()
+            )
         )
 
-    def bind(self, transition_reward_root_strat_tuples):
+    def bind(self, strat, *transition_reward_root_tuples):
         kwargs = {}
-        for i in range(len(transition_reward_root_strat_tuples)):
-            transition_model, rewards, root, strat = (
-                transition_reward_root_strat_tuples[i]
+        for i in range(len(transition_reward_root_tuples)):
+            transition_model, rewards, root = (
+                transition_reward_root_tuples[i]
             )
             kwargs['ev{}'.format(i)] = [
                 transition_model,
