@@ -4,7 +4,7 @@ def matching_key_with_different_value(dict_a, dict_b):
         outer_dict, inner_dict = dict_a, dict_b
     for k in outer_dict.keys():
         if k in inner_dict:
-            if outer_dict[k] != inner_dict[k]: return k
+            if outer_dict[k] is not inner_dict[k]: return k
     return None
 
 
@@ -25,8 +25,10 @@ class BoundTfNode(object):
         )
         if k is not None:
             raise Exception(
-                'Incompatible feed dicts in BoundTfNodes at key "{}".'.format(
-                    k.name
+                'Incompatible feed dicts in BoundTfNodes at key "{}". Left value: {}, right value: {}'.format(
+                    k.name,
+                    self.feed_dict[k],
+                    other.feed_dict[k]
                 )
             )
 

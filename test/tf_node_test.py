@@ -60,14 +60,15 @@ class TfNodeTest(tf.test.TestCase):
     def test_bound_tf_node_combine_with_placeholders_compabitable(self):
         with self.test_session() as sess:
             c = tf.placeholder(tf.float32, [3])
+            c_val = [1, 2, 3.0]
 
             patient1 = BoundTfNode(
                 {'patient1': [1.3, 5.3, 8.9] * c},
-                {c: [1, 2, 3.0]}
+                {c: c_val}
             )
             patient2 = BoundTfNode(
                 {'patient2': [3.6, 4.3, 6.1] + c},
-                {c: [1, 2, 3.0]}
+                {c: c_val}
             )
             patient = patient1.combine(patient2)
             v = patient.run(sess)
@@ -89,7 +90,8 @@ class TfNodeTest(tf.test.TestCase):
                 lambda c_val: {c: c_val},
                 name='patient2'
             )
-            patient = patient1([1, 2, 3.0]).combine(patient2([1, 2, 3.0]))
+            c_val = [1, 2, 3.0]
+            patient = patient1(c_val).combine(patient2(c_val))
             v = patient.run(sess)
             a, b = v['patient1'], v['patient2']
             self.assertAllClose([1.3, 10.6, 26.7], a)
@@ -109,8 +111,9 @@ class TfNodeTest(tf.test.TestCase):
                 lambda c_val: {c: c_val},
                 name='patient2'
             )
+            c_val = [1, 2, 3.0]
             patient = patient1.composable().combine(patient2.composable())
-            n = patient(patient1=[[1, 2, 3.0], {}], patient2=[[1, 2, 3.0], {}])
+            n = patient(patient1=[c_val, {}], patient2=[c_val, {}])
             v = n.run(sess)
             a, b = v['patient1'], v['patient2']
             self.assertAllClose([1.3, 10.6, 26.7], a)

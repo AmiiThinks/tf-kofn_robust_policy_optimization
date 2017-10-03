@@ -25,9 +25,7 @@ class KofnGadget(object):
     def __init__(self, n_weights, k_weights, mdp_generator):
         self.i_weights = prob_ith_element(n_weights, k_weights)
         self.ev_mdps = [mdp_generator() for _ in range(self.max_num_mdps())]
-        self.weighted_reward_mdps = [
-            mdp_generator() for _ in range(self.max_num_mdps())
-        ]
+        self.weighted_reward_mdps = self.ev_mdps
         unbound_individual_evs = sum(
             [
                 self.ev_mdps[i].unbound_expected_value.composable(
