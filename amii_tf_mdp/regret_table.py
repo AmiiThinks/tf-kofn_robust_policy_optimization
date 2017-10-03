@@ -114,21 +114,19 @@ class RegretTable(object):
             num_actions,
             name=type(self).__name__ if name is None else name
         )
+        self.strat = tf.transpose(
+            l1_projection_to_simplex(tf.transpose(self.regrets))
+        )
 
     def horizon(self): return self._horizon
     def num_states(self): return self._num_states
     def num_actions(self): return self.regrets.shape[-1].value
 
-    def strat_at_timestep(self, t):
+    def _strat_at_timestep(self, t):
         return tf.transpose(
             l1_projection_to_simplex(
                 tf.transpose(self.at_timestep(t))
             )
-        )
-
-    def strat(self):
-        return tf.transpose(
-            l1_projection_to_simplex(tf.transpose(self.regrets))
         )
 
     def updated_regrets(self, inst_regrets, **kwargs):
@@ -142,47 +140,7 @@ class RegretTable(object):
         return tf.assign_add(self.regrets, inst_regrets, **kwargs)
 
 
-class RegretTableIr(RegretTable):
-    @classmethod
-    def new_table(cls, horizon, num_states, num_actions, **kwargs):
-        return cls.new_ir_table(
-            horizon,
-            num_states,
-            num_actions,
-            **kwargs
-        )
-
-    def strat_at_timestep(self, t):
-        '''
-        Returns:
-        - Rank-2 Tensor (|S| by |A|) that are the regrets at
-          timestep t for every state.
-        '''
-        return self.__class__.sequences_at_timestep_ir(
-            self.strat(),
-            t,
-            self.num_states()
-        )
-
-    def updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
-        '''
-        Params:
-        - t: Timestep.
-        - inst_regrets: Rank-2 Tensor (|S| by |A|).
-
-        Returns:
-        - Update node.
-        '''
-        return self.__class__.updated_regrets_at_timestep_ir(
-            self.regrets,
-            t,
-            self.num_states(),
-            inst_regrets,
-            **kwargs
-        )
-
-
-class RegretTablePr(RegretTable):
+class PrRegretTable(RegretTable):
     @classmethod
     def new_table(cls, horizon, num_states, num_actions, **kwargs):
         return cls.new_pr_table(
@@ -202,7 +160,7 @@ class RegretTablePr(RegretTable):
     def num_pr_prefixes(self, t):
         return int(self.num_pr_sequences(t) / self.num_states())
 
-    def strat_at_timestep(self, t):
+    def _strat_at_timestep(self, t):
         return self.__class__.sequences_at_timestep_pr(
             self.strat(),
             t,
@@ -210,7 +168,7 @@ class RegretTablePr(RegretTable):
             self.num_actions()
         )
 
-    def updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
+    def _updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
         return self.__class__.updated_regrets_at_timestep_pr(
             self.regrets,
             t,
@@ -220,21 +178,11 @@ class RegretTablePr(RegretTable):
             **kwargs
         )
 
-    def cfr_update(self, unrolled_pr_mdp_state_sequence_rewards):
-        return self.updated_regrets(
-            self.instantaneous_regrets(
-                unrolled_pr_mdp_state_sequence_rewards
-            )
-        )
-
-    def instantaneous_regrets(
-        self,
-        unrolled_pr_mdp_state_sequence_rewards
-    ):
+    def instantaneous_regrets(self, weighted_sequence_rewards):
         inst_regret_blocks = []
         current_cf_state_values = None
         strat = tf.reshape(
-            self.strat(),
+            self.strat,
             [
                 self.num_pr_prefixes(self.horizon() - 1),
                 self.num_states(),
@@ -243,7 +191,7 @@ class RegretTablePr(RegretTable):
         )
         action_rewards_weighted_by_chance = tf.squeeze(
             tf.reduce_sum(
-                unrolled_pr_mdp_state_sequence_rewards,
+                weighted_sequence_rewards,
                 axis=3
             )
         )
@@ -307,7 +255,7 @@ class RegretMatchingPlusMixin(object):
             **kwargs
         )
 
-    def updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
+    def _updated_regrets_at_timestep(self, t, inst_regrets, **kwargs):
         node = super(
             RegretMatchingPlusMixin,
             self
@@ -319,7 +267,4 @@ class RegretMatchingPlusMixin(object):
         return tf.assign(node, tf.maximum(0.0, node), **kwargs)
 
 
-class RegretMatchingPlusIr(RegretMatchingPlusMixin, RegretTableIr): pass
-
-
-class RegretMatchingPlusPr(RegretMatchingPlusMixin, RegretTablePr): pass
+class PrRegretMatchingPlus(RegretMatchingPlusMixin, PrRegretTable): pass
