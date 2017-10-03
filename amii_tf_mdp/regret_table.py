@@ -1,6 +1,6 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
-from .sequence_utils import num_pr_sequences, num_ir_sequences
+from .utils.sequence import num_pr_sequences, num_ir_sequences
 
 
 class RegretTable(object):

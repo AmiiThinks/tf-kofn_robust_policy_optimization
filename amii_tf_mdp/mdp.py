@@ -1,8 +1,6 @@
 import tensorflow as tf
-from .probability_utils import prob_next_state, prob_state_given_action
-from .reward_utils import reward_distribution
-from .sequence_utils import num_pr_sequences, \
-    prob_next_sequence_state_action_and_next_state
+from .utils.sequence import num_pr_sequences
+from .utils.probability import prob_next_state, prob_state_given_action
 from amii_tf_nn.projection import l1_projection_to_simplex
 
 
@@ -46,16 +44,6 @@ class MdpAnchor(object):
 
     def num_states(self):
         return self.rewards.shape[0].value
-
-    def reward_distribution(self, state, strat=None):
-        return reward_distribution(self.rewards, state, strat=strat)
-
-    def reward(self, state, next_state, strat=None):
-        return tf.tensordot(
-            self.reward_distribution(state, strat=strat),
-            next_state,
-            axes=1
-        )
 
     def num_pr_sequences(self, t):
         return num_pr_sequences(

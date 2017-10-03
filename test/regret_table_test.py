@@ -4,7 +4,7 @@ from amii_tf_nn.projection import l1_projection_to_simplex
 from amii_tf_mdp.regret_table import RegretTable, \
     PrRegretMatchingPlus, PrRegretTable
 from amii_tf_mdp.pr_uncertain_mdp import PrUncertainMdp
-from amii_tf_mdp.tf_node import BoundTfNode
+from amii_tf_mdp.utils.tf_node import BoundTfNode
 
 
 class RegretTableTest(tf.test.TestCase):

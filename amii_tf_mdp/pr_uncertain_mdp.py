@@ -1,8 +1,8 @@
 import tensorflow as tf
-from .sequence_utils import num_pr_sequences, \
-    prob_next_sequence_state_action_and_next_state
 from amii_tf_nn.projection import l1_projection_to_simplex
-from amii_tf_mdp.tf_node import UnboundTfNode
+from .utils.sequence import num_pr_sequences, \
+    prob_next_sequence_state_action_and_next_state
+from .utils.tf_node import UnboundTfNode
 
 
 class PrUncertainMdp(object):

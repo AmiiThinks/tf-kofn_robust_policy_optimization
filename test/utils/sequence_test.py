@@ -1,5 +1,5 @@
 import tensorflow as tf
-import amii_tf_mdp.sequence_utils as patient
+import amii_tf_mdp.utils.sequence as patient
 
 
 class SequenceUtilsTest(tf.test.TestCase):

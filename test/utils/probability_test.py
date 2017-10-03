@@ -1,5 +1,5 @@
 import tensorflow as tf
-import amii_tf_mdp.probability_utils as patient
+import amii_tf_mdp.utils.probability as patient
 
 
 class ProbabilityUtilsTest(tf.test.TestCase):

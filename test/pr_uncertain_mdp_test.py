@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from amii_tf_mdp.pr_uncertain_mdp import PrUncertainMdp
-from amii_tf_mdp.sequence_utils import num_pr_sequences
+from amii_tf_mdp.utils.sequence import num_pr_sequences
 from amii_tf_nn.projection import l1_projection_to_simplex
 
 

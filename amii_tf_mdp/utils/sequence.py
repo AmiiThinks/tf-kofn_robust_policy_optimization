@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .probability_utils import prob_state_and_action
+from .probability import prob_state_and_action
 
 
 def num_pr_sequences(horizon, num_states, num_actions):
