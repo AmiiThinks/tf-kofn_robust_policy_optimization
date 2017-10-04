@@ -61,7 +61,7 @@ class KofnGadget(object):
                 self.i_weights,
                 [self.max_num_mdps()]
             ),
-            name='unbound_mdp_weights'
+            name='mdp_weights'
         )
         unbound_expected_value = UnboundTfNode(
             tf.tensordot(
@@ -69,7 +69,7 @@ class KofnGadget(object):
                 unbound_mdp_weights.component,
                 1
             ),
-            name='unbound_expected_value'
+            name='gadget_ev'
         )
         self.unbound_ev_dependent_nodes = (
             unbound_individual_evs +
@@ -111,8 +111,13 @@ class KofnGadget(object):
             )
         )
 
+
     def bind(self, strat, *transition_reward_root_tuples):
-        kwargs = {}
+        kwargs = {
+            'sorted_mdp_indices': [{}],
+            'mdp_weights': [{}],
+            'gadget_ev': [{}]
+        }
         for i in range(len(transition_reward_root_tuples)):
             transition_model, rewards, root = (
                 transition_reward_root_tuples[i]
@@ -130,3 +135,12 @@ class KofnGadget(object):
         return self.unbound_nodes(**kwargs)
 
     def max_num_mdps(self): return self.i_weights.shape[0].value
+
+    def create_regret_update_node(self, learner):
+        inst_regrets = [
+            learner.instantaneous_regrets(r.component)
+            for r in self.unbound_weighted_rewards
+        ]
+        return learner.updated_regrets(
+            sum(inst_regrets[1:], inst_regrets[0])
+        )
