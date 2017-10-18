@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
 from ..utils.tf_node import UnboundTfNode
 
@@ -15,15 +16,21 @@ def prob_ith_element(n_weights, k_weights):
     n >= i.
     '''
     n_prob = l1_projection_to_simplex(n_weights)
-    a = n_prob / tf.cumsum(k_weights)
+    w_n_bar = tf.cumsum(k_weights)
+    a = n_prob / w_n_bar
     a = tf.where(tf.is_nan(a), tf.zeros_like(a), a)
-    b = tf.cumsum(k_weights, exclusive=True) * tf.cumsum(a, reverse=True)
+    w_i_minus_one_bar = tf.cumsum(k_weights, exclusive=True)
+    b = w_i_minus_one_bar * tf.cumsum(a, reverse=True)
     return 1.0 - (tf.cumsum(n_prob, exclusive=True) + b)
 
 
 class KofnGadget(object):
     def __init__(self, n_weights, k_weights, mdp_generator):
-        self.i_weights = prob_ith_element(n_weights, k_weights)
+        # TODO Getting the probability that chance selects the ith MDP is not as simple as normalizing the prob of the ith element...
+        # TODO This only works when only one k_weight is greater than zero.
+        self.i_weights = l1_projection_to_simplex(
+            prob_ith_element(n_weights, k_weights)
+        )
         self.ev_mdps = [mdp_generator() for _ in range(self.max_num_mdps())]
         self.weighted_reward_mdps = self.ev_mdps
         unbound_individual_evs = sum(
