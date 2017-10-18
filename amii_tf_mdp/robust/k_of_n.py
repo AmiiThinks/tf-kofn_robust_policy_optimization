@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
 from ..utils.tf_node import UnboundTfNode
 
@@ -26,7 +25,8 @@ def prob_ith_element(n_weights, k_weights):
 
 class KofnGadget(object):
     def __init__(self, n_weights, k_weights, mdp_generator):
-        # TODO Getting the probability that chance selects the ith MDP is not as simple as normalizing the prob of the ith element...
+        # TODO Getting the probability that chance selects the ith MDP is not
+        # as simple as normalizing the prob of the ith element...
         # TODO This only works when only one k_weight is greater than zero.
         self.i_weights = l1_projection_to_simplex(
             prob_ith_element(n_weights, k_weights)
@@ -117,7 +117,6 @@ class KofnGadget(object):
                 self.unbound_weighted_rewards[0].composable()
             )
         )
-
 
     def bind(self, strat, *transition_reward_root_tuples):
         kwargs = {
