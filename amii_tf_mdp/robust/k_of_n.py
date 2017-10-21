@@ -1,9 +1,9 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
-from ..utils.tf_node import UnboundTfNode
+from ..pr_mdp import pr_mdp_expected_value, num_states, num_actions
 
 
-def prob_ith_element(n_weights, k_weights):
+def prob_ith_element_is_in_k_subset(n_weights, k_weights):
     '''
     Linear time algorithm to find the probability that the ith element is
     included given weights that chance uses to sample N and k.
@@ -23,130 +23,75 @@ def prob_ith_element(n_weights, k_weights):
     return 1.0 - (tf.cumsum(n_prob, exclusive=True) + b)
 
 
-class KofnGadget(object):
-    def __init__(self, n_weights, k_weights, mdp_generator):
-        # TODO Getting the probability that chance selects the ith MDP is not
-        # as simple as normalizing the prob of the ith element...
-        # TODO This only works when only one k_weight is greater than zero.
-        self.i_weights = l1_projection_to_simplex(
-            prob_ith_element(n_weights, k_weights)
-        )
-        self.ev_mdps = [mdp_generator() for _ in range(self.max_num_mdps())]
-        self.weighted_reward_mdps = self.ev_mdps
-        unbound_individual_evs = sum(
-            [
-                self.ev_mdps[i].unbound_expected_value.composable(
-                    'ev{}'.format(i)
-                )
-                for i in range(1, len(self.ev_mdps))
-            ],
-            self.ev_mdps[0].unbound_expected_value.composable('ev0')
-        )
-        unbound_stacked_evs = UnboundTfNode(
-            tf.stack(
-                [mdp.unbound_expected_value.component for mdp in self.ev_mdps],
-                axis=0
-            ),
-            name='evs'
-        )
-        unbound_sorted_mdp_indices = UnboundTfNode(
-            # Sorted in ascending order
-            tf.reverse(
-                # Sort in descending order
-                tf.nn.top_k(
-                    unbound_stacked_evs.component,
-                    k=unbound_stacked_evs.component.shape[-1].value,
-                    sorted=True
-                )[1],
-                [0]
-            ),
-            name='sorted_mdp_indices'
-        )
-        unbound_mdp_weights = UnboundTfNode(
-            tf.scatter_nd(
-                tf.expand_dims(unbound_sorted_mdp_indices.component, dim=1),
-                self.i_weights,
-                [self.max_num_mdps()]
-            ),
-            name='mdp_weights'
-        )
-        unbound_expected_value = UnboundTfNode(
-            tf.tensordot(
-                unbound_stacked_evs.component,
-                unbound_mdp_weights.component,
-                1
-            ),
-            name='gadget_ev'
-        )
-        self.unbound_ev_dependent_nodes = (
-            unbound_individual_evs +
-            unbound_stacked_evs.composable() +
-            unbound_sorted_mdp_indices.composable() +
-            unbound_mdp_weights.composable() +
-            unbound_expected_value.composable()
-        )
+def prob_ith_element_is_sampled(n_weights, k_weights):
+    # TODO Getting the probability that chance selects the ith MDP is not
+    # as simple as normalizing the prob of the ith element...
+    # TODO This only works when only one k_weight is greater than zero.
+    # TODO The math for doing this properly is fairly simple, just need to
+    # code it up and test it
+    return l1_projection_to_simplex(
+        prob_ith_element_is_in_k_subset(n_weights, k_weights)
+    )
 
-        def _weighted_rewards_fdg(mdp):
-            def _f(transition_model, rewards, root=None):
-                d = {
-                    mdp.transition_model: transition_model,
-                    mdp.rewards: rewards
-                }
-                if root is not None:
-                    d[mdp.root] = root
-                return d
-            return _f
 
-        self.unbound_weighted_rewards = [
-            UnboundTfNode(
-                (
-                    self.weighted_reward_mdps[i].unbound_sequences.component *
-                    self.weighted_reward_mdps[i].rewards *
-                    unbound_mdp_weights.component[i]
-                ),
-                feed_dict_generator=_weighted_rewards_fdg(
-                    self.weighted_reward_mdps[i]
-                ),
-                name='weighted_rewards{}'.format(i)
-            ) for i in range(len(self.weighted_reward_mdps))
-        ]
-        self.unbound_nodes = (
-            self.unbound_ev_dependent_nodes +
-            sum(
-                [r.composable() for r in self.unbound_weighted_rewards[1:]],
-                self.unbound_weighted_rewards[0].composable()
+# rank_weights = prob_ith_element_is_sampled(n_weights, k_weights)
+# chance_prob_sequences = [
+#     pr_mdp_rollout(horizon, roots[i], transitions[i])
+#     for i in range(len(n_weights))
+# ]
+
+def rank_to_element_weights(rank_weights, elements):
+    # Sorted in ascending order
+    ranked_indices = tf.reverse(
+        tf.nn.top_k(elements, k=elements.shape[-1].value, sorted=True)[1],
+        [0]
+    )
+    return tf.scatter_nd(
+        tf.expand_dims(ranked_indices, dim=1),
+        rank_weights,
+        [rank_weights.shape[0].value]
+    )
+
+
+def k_of_n_mdp_weights(n_weights, k_weights, evs):
+    return rank_to_element_weights(
+        prob_ith_element_is_sampled(n_weights, k_weights),
+        evs
+    )
+
+
+def k_of_n_pr_mdp_evs(horizon, chance_prob_sequences, reward_models, strat):
+    return tf.stack(
+        [
+            pr_mdp_expected_value(
+                horizon,
+                num_states(reward_models[i]),
+                num_actions(reward_models[i]),
+                chance_prob_sequences[i],
+                reward_models[i],
+                strat
             )
-        )
+            for i in range(len(reward_models))
+        ],
+        axis=0
+    )
 
-    def bind(self, strat, *transition_reward_root_tuples):
-        kwargs = {
-            'sorted_mdp_indices': [{}],
-            'mdp_weights': [{}],
-            'gadget_ev': [{}]
-        }
-        for i in range(len(transition_reward_root_tuples)):
-            transition_model, rewards, root = (
-                transition_reward_root_tuples[i]
-            )
-            kwargs['ev{}'.format(i)] = [
-                transition_model,
-                rewards,
-                {'root': root, 'strat': strat}
-            ]
-            kwargs['weighted_rewards{}'.format(i)] = [
-                transition_model,
-                rewards,
-                {'root': root}
-            ]
-        return self.unbound_nodes(**kwargs)
 
-    def max_num_mdps(self): return self.i_weights.shape[0].value
+def k_of_n_ev(evs, weights): return tf.tensordot(evs, weights, 1)
 
-    def create_regret_update_node(self, learner):
-        inst_regrets = [
-            learner.instantaneous_regrets(r.component)
-            for r in self.unbound_weighted_rewards
-        ]
-        return learner.updated_regrets(
-            sum(inst_regrets[1:], inst_regrets[0])
-        )
+
+def k_of_n_regret_update(
+    chance_prob_sequence_list,
+    reward_models,
+    weights,
+    learner
+):
+    weighted_rewards = [
+        chance_prob_sequence_list[i] * reward_models[i] * weights[i]
+        for i in range(len(reward_models))
+    ]
+    inst_regrets = [learner.instantaneous_regrets(r) for r in weighted_rewards]
+    regret_update = learner.updated_regrets(
+        sum(inst_regrets[1:], inst_regrets[0])
+    )
+    return regret_update

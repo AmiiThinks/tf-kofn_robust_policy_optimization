@@ -96,19 +96,6 @@ class RegretTable(object):
             **kwargs
         )
 
-    @classmethod
-    def from_mdp(cls, mdp, name=None):
-        return cls(
-            mdp.horizon,
-            mdp.num_states(),
-            mdp.num_actions(),
-            name=name
-        )
-
-    @classmethod
-    def from_gadget(cls, gadget, name=None):
-        return cls.from_mdp(gadget.ev_mdps[0])
-
     def __init__(self, horizon, num_states, num_actions, name=None):
         self._horizon = horizon
         self._num_states = num_states

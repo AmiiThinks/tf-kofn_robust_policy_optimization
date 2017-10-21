@@ -3,8 +3,8 @@ import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
 from amii_tf_mdp.regret_table import RegretTable, \
     PrRegretMatchingPlus, PrRegretTable
-from amii_tf_mdp.pr_uncertain_mdp import PrUncertainMdp
-from amii_tf_mdp.utils.tf_node import BoundTfNode
+from amii_tf_mdp.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
+    pr_mdp_optimal_policy_and_value
 
 
 class RegretTableTest(tf.test.TestCase):
@@ -252,20 +252,18 @@ class RegretTableTest(tf.test.TestCase):
             num_states = 3
             num_actions = 2
 
-            transition_model = sess.run(
-                tf.transpose(
-                    l1_projection_to_simplex(
-                        np.random.normal(
-                            size=(
-                                num_states,
-                                num_actions,
-                                num_states
-                            )
+            transition_model = tf.transpose(
+                l1_projection_to_simplex(
+                    np.random.normal(
+                        size=(
+                            num_states,
+                            num_actions,
+                            num_states
                         )
                     )
                 )
             )
-            rewards = sess.run(
+            rewards = (
                 np.random.uniform(
                     size=(num_states, num_actions, num_states)
                 ) *
@@ -282,70 +280,53 @@ class RegretTableTest(tf.test.TestCase):
                     )
                 )
             )
-            x_root = sess.run(l1_projection_to_simplex(tf.ones([3])))
-
-            state = PrUncertainMdp(horizon, num_states, num_actions)
-            sess.run(tf.global_variables_initializer())
-
-            weighted_rewards_node = state.bound_sequences_node(
-                transition_model,
-                root=x_root
+            root = l1_projection_to_simplex(tf.ones([3]))
+            seq_chance_probs_node = pr_mdp_rollout(
+                horizon,
+                root,
+                transition_model
             )
-            weighted_rewards_node.components *= rewards
+            weighted_rewards_node = seq_chance_probs_node * rewards
 
             for patient in [
-                PrRegretTable.from_mdp(state),
-                PrRegretMatchingPlus.from_mdp(state)
+                PrRegretTable(horizon, num_states, num_actions),
+                PrRegretMatchingPlus(horizon, num_states, num_actions)
             ]:
                 patient.regrets.initializer.run()
 
-                ev_node = state.bound_expected_value_node(
-                    transition_model,
+                ev_node = pr_mdp_expected_value(
+                    horizon,
+                    num_states,
+                    num_actions,
+                    seq_chance_probs_node,
                     rewards,
-                    root=x_root,
-                    strat=sess.run(patient.strat)
+                    patient.strat
                 )
-                x_ev = ev_node.run(sess)
-                self.assertAlmostEqual(0.78666484, x_ev, places=6)
+                x_ev = 0.78666484
+                self.assertAlmostEqual(x_ev, sess.run(ev_node), places=6)
 
-                patient_cfr_update = BoundTfNode(
-                    [
-                        patient.updated_regrets(
-                            patient.instantaneous_regrets(
-                                weighted_rewards_node.components
-                            )
-                        )
-                    ],
-                    weighted_rewards_node.feed_dict
+                patient_cfr_update = patient.updated_regrets(
+                    patient.instantaneous_regrets(
+                        weighted_rewards_node
+                    )
                 )
-                patient_cfr_update.run(sess)
+                sess.run(patient_cfr_update)
+                self.assertGreater(sess.run(ev_node), x_ev)
 
-                next_ev_node = state.bound_expected_value_node(
-                    transition_model,
-                    rewards,
-                    root=x_root,
-                    strat=sess.run(patient.strat)
-                )
-                self.assertGreater(next_ev_node.run(sess), x_ev)
-
-                patient_cfr_update.run(sess)
-
-                next_ev_node = state.bound_expected_value_node(
-                    transition_model,
-                    rewards,
-                    root=x_root,
-                    strat=sess.run(patient.strat)
-                )
-                next_ev = next_ev_node.run(sess)
-                self.assertGreater(next_ev, x_ev)
+                sess.run(patient_cfr_update)
+                self.assertGreater(sess.run(ev_node), x_ev)
 
                 self.assertAlmostEqual(
-                    state.bound_br_value_node(
-                        transition_model,
-                        rewards,
-                        root=x_root
-                    ).run(sess),
-                    next_ev,
+                    sess.run(
+                        pr_mdp_optimal_policy_and_value(
+                            horizon,
+                            num_states,
+                            num_actions,
+                            seq_chance_probs_node,
+                            rewards
+                        )[1]
+                    ),
+                    sess.run(ev_node),
                     places=6
                 )
 

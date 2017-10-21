@@ -15,6 +15,12 @@ def num_pr_sequences(horizon, num_states, num_actions):
         )
 
 
+def num_pr_prefixes(horizon, num_states, num_actions):
+    return int(
+        num_pr_sequences(horizon, num_states, num_actions) / num_states
+    )
+
+
 def num_ir_sequences(horizon, num_states): return horizon * num_states
 
 
