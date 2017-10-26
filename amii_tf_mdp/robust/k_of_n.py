@@ -1,6 +1,5 @@
 import tensorflow as tf
 from amii_tf_nn.projection import l1_projection_to_simplex
-from ..pr_mdp import pr_mdp_expected_value, num_states, num_actions
 
 
 def prob_ith_element_is_in_k_subset(n_weights, k_weights):
@@ -57,23 +56,6 @@ def k_of_n_mdp_weights(n_weights, k_weights, evs):
     return rank_to_element_weights(
         prob_ith_element_is_sampled(n_weights, k_weights),
         evs
-    )
-
-
-def k_of_n_pr_mdp_evs(horizon, chance_prob_sequences, reward_models, strat):
-    return tf.stack(
-        [
-            pr_mdp_expected_value(
-                horizon,
-                num_states(reward_models[i]),
-                num_actions(reward_models[i]),
-                chance_prob_sequences[i],
-                reward_models[i],
-                strat
-            )
-            for i in range(len(reward_models))
-        ],
-        axis=0
     )
 
 

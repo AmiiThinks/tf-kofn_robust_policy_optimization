@@ -95,6 +95,23 @@ def pr_mdp_expected_value(
     return tf.reduce_sum(current_cf_state_values)
 
 
+def pr_mdp_evs(horizon, chance_prob_sequences, reward_models, strat):
+    return tf.stack(
+        [
+            pr_mdp_expected_value(
+                horizon,
+                num_states(reward_models[i]),
+                num_actions(reward_models[i]),
+                chance_prob_sequences[i],
+                reward_models[i],
+                strat
+            )
+            for i in range(len(reward_models))
+        ],
+        axis=0
+    )
+
+
 def pr_mdp_optimal_policy_and_value(
     horizon,
     num_states,

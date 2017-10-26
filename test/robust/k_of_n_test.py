@@ -1,6 +1,6 @@
 import tensorflow as tf
 import amii_tf_mdp.robust.k_of_n as patient
-from amii_tf_mdp.pr_mdp import pr_mdp_rollout
+from amii_tf_mdp.pr_mdp import pr_mdp_rollout, pr_mdp_evs
 
 
 class KOfNTest(tf.test.TestCase):
@@ -165,7 +165,7 @@ class KOfNTest(tf.test.TestCase):
                 [1.0, 0]
             ]
 
-            evs = patient.k_of_n_pr_mdp_evs(
+            evs = pr_mdp_evs(
                 horizon,
                 chance_prob_sequences,
                 reward_models,
