@@ -90,8 +90,7 @@ class SequenceUtilsTest(tf.test.TestCase):
                                 ]
                             ]
                         ]
-                    ),
-                    num_actions=num_actions
+                    )
                 ).eval()
             )
 
@@ -134,8 +133,7 @@ class SequenceUtilsTest(tf.test.TestCase):
                 x_prob_next_sequence_state_action_and_next_state,
                 patient.prob_next_sequence_state_action_and_next_state(
                     transition_model,
-                    prob_sequence_action_and_state,
-                    num_actions=num_actions
+                    prob_sequence_action_and_state
                 ).eval()
             )
 
@@ -208,8 +206,7 @@ class SequenceUtilsTest(tf.test.TestCase):
                 x_prob_next_sequence_state_action_and_next_state,
                 patient.prob_next_sequence_state_action_and_next_state(
                     transition_model,
-                    prob_sequence_action_and_state,
-                    num_actions=num_actions
+                    prob_sequence_action_and_state
                 ).eval()
             )
 

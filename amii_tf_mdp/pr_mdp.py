@@ -26,16 +26,14 @@ def pr_mdp_rollout(horizon, root, transitions):
     sequence_blocks = [
         prob_next_sequence_state_action_and_next_state(
             transitions,
-            tf.reshape(root, (1, 1, root.shape[0].value)),
-            num_actions=num_actions(transitions)
+            tf.reshape(root, (1, 1, root.shape[0].value))
         )
     ]
     for _ in range(horizon - 1):
         sequence_blocks.append(
             prob_next_sequence_state_action_and_next_state(
                 transitions,
-                sequence_blocks[-1],
-                num_actions=num_actions(transitions)
+                sequence_blocks[-1]
             )
         )
     return tf.concat(sequence_blocks, axis=0)

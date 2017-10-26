@@ -31,6 +31,14 @@ def num_pr_sequences_at_timestep(t, num_states, num_actions):
         return num_states * (num_states * num_actions) ** t
 
 
+def static_size(tensor):
+    p = 1
+    for i in range(len(tensor.shape)):
+        if tensor.shape[i].value > 0:
+            p *= tensor.shape[i].value
+    return p
+
+
 def prob_sequence_state_and_action(
     prob_sequence_action_state,
     strat=None,
@@ -43,8 +51,7 @@ def prob_sequence_state_and_action(
         Defaults to all ones so that every row is the probability of the
         state under all pure strategies. Must supply the number of actions
         in the `num_actions` parameter if `strat` is `None`.
-    - [num_actions]: (Optional) The number of actions. Only required when
-        `strat` is `None`.
+    - [num_actions]: TODO
 
     Returns:
     - Rank-3 Tensor (|Seq| * |A| by |S| by |A'|). Prob of being in each
@@ -52,20 +59,26 @@ def prob_sequence_state_and_action(
         strategy `strat`.
     '''
     if strat is None:
-        strat = tf.ones(
-            (
-                tf.reshape(prob_sequence_action_state, [-1]).shape[0].value,
-                num_actions
-            )
-        )
-    return tf.reshape(
-        prob_state_and_action(
-            tf.reshape(prob_sequence_action_state, shape=[-1]),
-            strat=strat,
-            num_actions=num_actions
+        if num_actions is None:
+            num_actions = prob_sequence_action_state.shape[-2].value
+        strat = tf.ones((static_size(prob_sequence_action_state), num_actions))
+    else:
+        num_actions = strat.shape[-1].value
+    prob_tensor = prob_state_and_action(
+        tf.reshape(
+            prob_sequence_action_state,
+            shape=[static_size(prob_sequence_action_state)]
         ),
+        strat=strat,
+        num_actions=num_actions
+    )
+    return tf.reshape(
+        prob_tensor,
         shape=(
-            -1,
+            int(
+                static_size(prob_tensor) /
+                (prob_sequence_action_state.shape[-1].value * num_actions)
+            ),
             prob_sequence_action_state.shape[-1].value,
             num_actions
         )
@@ -75,18 +88,16 @@ def prob_sequence_state_and_action(
 def prob_next_sequence_state_action_and_next_state(
     transition_model,
     prob_sequence_action_state,
-    strat=None,
-    num_actions=None
+    strat=None
 ):
     '''
     Params:
+    - transition_model: |S| by |A| by |S| Tensor.
     - prob_sequence_action_state: Tensor with rank > 2 (* by |A| by |S|).
     - [strat]: (Optional) Rank-2 Tensor (|Seq| * |A| * |S| by |A|).
         Defaults to all ones so that every row is the probability of the
         state under all pure strategies. Must supply the number of actions
         in the `num_actions` parameter if `strat` is `None`.
-    - [num_actions]: (Optional) The number of actions. Only required when
-        `strat` is `None`.
 
     Returns:
     - Rank-4 Tensor (|Seq| * |A| by |S| by |A| by |S|). Prob of being in each
@@ -95,8 +106,7 @@ def prob_next_sequence_state_action_and_next_state(
     '''
     prob_sequence_state_and_action_ = prob_sequence_state_and_action(
         prob_sequence_action_state,
-        strat=strat,
-        num_actions=num_actions
+        strat=strat
     )
     prob_state_action_sequence_next_state = (
         tf.transpose(
