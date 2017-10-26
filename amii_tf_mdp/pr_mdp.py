@@ -16,10 +16,6 @@ def mean(mdp_params):
     return (mean_transition_model, mean_rewards)
 
 
-def null_pr_policy(horizon, num_states, num_actions):
-    return tf.ones((num_pr_sequences(horizon - 1, num_states, num_actions)))
-
-
 def num_actions(transitions): return transitions.shape[1].value
 
 
