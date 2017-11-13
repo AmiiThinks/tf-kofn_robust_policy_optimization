@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .utils.sequence import num_pr_sequences, num_pr_prefixes, \
+from .utils.sequence import num_pr_prefixes, \
     prob_next_sequence_state_action_and_next_state
 
 
