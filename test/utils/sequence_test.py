@@ -96,8 +96,9 @@ class SequenceUtilsTest(tf.test.TestCase):
 
     def test_prob_next_sequence_state_action_and_next_state(self):
         with self.test_session():
-            prob_sequence_action_and_state = tf.constant([[[[0.5, 0.4, 0.1]]]])
-            num_actions = 2
+            prob_sequence_action_and_state = tf.constant(
+                [[[[0.5, 0.4, 0.1]]]]
+            )
             transition_model = [
                 [
                     [4.11, 4.12, 4.13],
