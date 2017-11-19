@@ -101,7 +101,7 @@ class DiscountedMdpTest(tf.test.TestCase):
                 sess.run(
                     tf.random_normal(shape=[num_states * num_actions, 1])))
             regret_1_op = regret_matching_op(
-                P, r, t=10, max_num_pi_iterations=lambda _: 1)
+                P, r, t=10, max_num_pe_iterations=lambda _: 1)
             Pi = matrix_to_block_matrix_op(row_normalize_op(regret_1_op))
             q_op = primal_action_value_policy_evaluation_op(
                 P,
@@ -118,7 +118,7 @@ class DiscountedMdpTest(tf.test.TestCase):
                                            Pi @ q_op)).eval())
 
             regret_5_op = regret_matching_op(
-                P, r, t=10, max_num_pi_iterations=lambda _: 5)
+                P, r, t=10, max_num_pe_iterations=lambda _: 5)
 
             Pi = matrix_to_block_matrix_op(row_normalize_op(regret_5_op))
             q_op = primal_action_value_policy_evaluation_op(
@@ -151,7 +151,7 @@ class DiscountedMdpTest(tf.test.TestCase):
             Pi_1_op = matrix_to_block_matrix_op(
                 generalized_policy_iteration_op(
                     P, r, gamma=gamma, t=10,
-                    max_num_pi_iterations=lambda _: 1))
+                    max_num_pe_iterations=lambda _: 1))
             q_op = primal_action_value_policy_evaluation_op(
                 P,
                 Pi_1_op,
@@ -169,7 +169,7 @@ class DiscountedMdpTest(tf.test.TestCase):
             Pi_5_op = matrix_to_block_matrix_op(
                 generalized_policy_iteration_op(
                     P, r, gamma=gamma, t=10,
-                    max_num_pi_iterations=lambda _: 5))
+                    max_num_pe_iterations=lambda _: 5))
             q_op = primal_action_value_policy_evaluation_op(
                 P,
                 Pi_5_op,

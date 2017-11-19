@@ -102,7 +102,7 @@ def regret_matching_op(P,
                        gamma=0.9,
                        t=10,
                        pi_threshold=1e-15,
-                       max_num_pi_iterations=lambda s: -1):
+                       max_num_pe_iterations=lambda s: -1):
     if alpha is None: alpha = 1.0 / t
     num_states = P.shape[1].value
     num_actions = int(P.shape[0].value / num_states)
@@ -114,7 +114,7 @@ def regret_matching_op(P,
             r,
             gamma=gamma,
             threshold=pi_threshold,
-            max_num_iterations=max_num_pi_iterations(s))
+            max_num_iterations=max_num_pe_iterations(s))
         r_s = inst_regrets_op(q, Pi=Pi)
         return tf.reshape(r_s, shape=[num_states, num_actions])
 
@@ -136,7 +136,7 @@ def generalized_policy_iteration_op(P,
                                     gamma=0.9,
                                     t=10,
                                     pi_threshold=1e-15,
-                                    max_num_pi_iterations=lambda s: -1):
+                                    max_num_pe_iterations=lambda s: -1):
     if alpha is None: alpha = 1.0 / t
     num_states = P.shape[1].value
     num_actions = int(P.shape[0].value / num_states)
@@ -151,7 +151,7 @@ def generalized_policy_iteration_op(P,
                 r,
                 gamma=gamma,
                 threshold=pi_threshold,
-                max_num_iterations=(max_num_pi_iterations(s))),
+                max_num_iterations=(max_num_pe_iterations(s))),
             shape=[num_states, num_actions])
 
     return ind_max_op(
@@ -164,3 +164,31 @@ def generalized_policy_iteration_op(P,
 
 def root_value_op(mu, v):
     return tf.transpose(tf.transpose(mu) @ v)
+
+
+def value_ops(Pi, root_op, transition_model_op, reward_model_op, **kwargs):
+    action_values_op = dual_action_value_policy_evaluation_op(
+        transition_model_op, Pi, reward_model_op, **kwargs)
+
+    state_values_op = Pi @ action_values_op
+    ev_op = root_value_op(root_op, state_values_op)
+
+    return action_values_op, state_values_op, ev_op
+
+
+def associated_ops(action_weights,
+                   root_op,
+                   transition_model_op,
+                   reward_model_op,
+                   normalize_policy=True,
+                   **kwargs):
+    if normalize_policy:
+        policy = row_normalize_op(action_weights)
+    else:
+        policy = action_weights
+    Pi = policy_block_matrix_op(policy)
+
+    action_values_op, state_values_op, ev_op = value_ops(
+        Pi, root_op, transition_model_op, reward_model_op, **kwargs)
+
+    return Pi, action_values_op, state_values_op, ev_op
