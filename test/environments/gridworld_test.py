@@ -54,17 +54,19 @@ class GridworldTest(tf.test.TestCase):
             num_rows = 2
             num_columns = 3
             num_actions = 4
+            source = (0, 0)
+            goal = (1, 2)
 
-            patient = Gridworld(
-                num_rows,
-                num_columns
-            )
+            patient = Gridworld(num_rows, num_columns)
 
             self.assertAllEqual(
                 ['North', 'East', 'South', 'West'],
                 Gridworld.cardinal_direction_names()
             )
-            state_action_state_model = patient.cardinal_transition_model_op()
+            state_action_state_model = patient.cardinal_transition_model_op(
+                source,
+                goal
+            )
 
             self.assertAllEqual(
                 [
@@ -143,20 +145,20 @@ class GridworldTest(tf.test.TestCase):
             self.assertAllEqual(
                 [
                     [  # North
-                        [0, 0, 1],
+                        [1, 0, 0],
                         [0, 0, 0]
                     ],
                     [  # East
-                        [0, 0, 0],
-                        [0, 0, 1]
+                        [1, 0, 0],
+                        [0, 0, 0]
                     ],
                     [  # South
-                        [0, 0, 0],
-                        [0, 0, 1]
+                        [1, 0, 0],
+                        [0, 0, 0]
                     ],
                     [  # West
-                        [0, 0, 0],
-                        [0, 1, 0]
+                        [1, 0, 0],
+                        [0, 0, 0]
                     ]
                 ],
                 tf.reshape(
@@ -164,6 +166,50 @@ class GridworldTest(tf.test.TestCase):
                     [num_actions, num_rows, num_columns]
                 ).eval()
             )
+
+    # def test_cardinal_reward_model_op():
+    #     with self.test_session():
+    #         num_rows = 3
+    #         num_columns = 3
+    #         num_actions = 4
+    #
+    #         goal = (0, 1)
+    #         unknown_reward_positions = [(1, 1)]
+    #         unknown_reward_means = [-1]
+    #
+    #         patient = Gridworld(num_rows, num_columns)
+    #         reward_model = patient.cardinal_reward_model_op(
+    #             goal,
+    #             unknown_reward_positions,
+    #             unknown_reward_means
+    #         )
+    #
+    #         self.assertAllEqual(
+    #             [
+    #                 [0, 0, 0],
+    #                 [0, 1, 0],
+    #                 [0, -1, 0]
+    #             ],
+    #             reward_model[:, :, 0].eval()  # North
+    #         )
+    #
+    #         self.assertAllEqual(
+    #             [
+    #                 [1, 0, 0],
+    #                 [-1, 0, 0],
+    #                 [0, 0, 0]
+    #             ],
+    #             reward_model[:, :, 1].eval()  # East
+    #         )
+    #
+    #         self.assertAllEqual(
+    #             [
+    #                 [0, -1, 0],
+    #                 [0, 0, 0],
+    #                 [0, 0, 0]
+    #             ],
+    #             reward_model[:, :, 1].eval()  # South
+    #         )
 
 
 if __name__ == '__main__':
