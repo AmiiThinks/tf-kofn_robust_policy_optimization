@@ -10,24 +10,23 @@ from amii_tf_mdp.utils.timer import Timer
 from amii_tf_mdp.utils.quadrature import midpoint_quadrature
 from amii_tf_mdp.utils.experiment import PickleExperiment
 from amii_tf_mdp.utils.random import reset_random_state
-from amii_tf_mdp.utils.tensor import row_normalize_op
 
 random_seed = 10
 eval_random_seed = 42
 
 experiment = PickleExperiment(
-    'random_uncertain_reward_discounted_k_of_n',
+    'safe_rl_gridworld_k_of_n',
     root=os.path.join(os.getcwd(), 'tmp'),
     seed=random_seed,
     log_level=tf.logging.INFO)
 experiment.ensure_present()
 
-num_states = int(1e1)
-num_actions = int(5)
+num_states = 7
+num_actions = 4
 gamma = 0.9
 final_data = {
-    'num_training_iterations': 1000,
-    'num_eval_mdp_reps': 100,
+    'num_training_iterations': 500,
+    'num_eval_mdp_reps': 10,
     'n_weights': [0.0] * 999 + [1.0],
     'num_states': num_states,
     'num_actions': num_actions,
@@ -36,23 +35,63 @@ final_data = {
 }
 num_sampled_mdps = len(final_data['n_weights'])
 
-root_op = row_normalize_op(np.random.normal(size=[num_states, 1]))
-P = row_normalize_op(
-    np.random.uniform(size=[num_states * num_actions, num_states]))
+root_op = tf.constant(
+    np.array([1.0] + [0.0] * (num_states - 1),
+             dtype='float32').reshape([num_states, 1]))
+P = np.zeros([num_states, num_actions, num_states], dtype='float32')
+P[0, 0, 1] = 1
+P[0, 1, 2] = 1
+P[0, 2, 0] = 1
+P[0, 3, 0] = 1
 
-known_reward_positions = np.random.randint(
-    0, high=2, size=[num_states * num_actions, 1])
-assert (known_reward_positions.max() == 1)
-assert (known_reward_positions.min() == 0)
+P[1, 0, 1] = 1
+P[1, 1, 3] = 1
+P[1, 2, 0] = 1
+P[1, 3, 1] = 1
 
-known_rewards = -500 * known_reward_positions
+P[2, 0, 3] = 1
+P[2, 1, 4] = 1
+P[2, 2, 2] = 1
+P[2, 3, 0] = 1
+
+P[3, 0, 3] = 1
+P[3, 1, 5] = 1
+P[3, 2, 2] = 1
+P[3, 3, 1] = 1
+
+P[4, 0, 5] = 1
+P[4, 1, 4] = 1
+P[4, 2, 6] = 1
+P[4, 3, 2] = 1
+
+P[5, 0, 5] = 1
+P[5, 1, 5] = 1
+P[5, 2, 4] = 1
+P[5, 3, 3] = 1
+
+P[6, 0, 6] = 1
+P[6, 1, 6] = 1
+P[6, 2, 6] = 1
+P[6, 3, 6] = 1
+
+P = tf.constant(P.reshape([num_states * num_actions, num_states]))
+
+known_reward_positions = np.ones([num_states, num_actions], dtype='float32')
+known_reward_positions[0, 1] = 0
+known_reward_positions[3, 2] = 0
+known_reward_positions[4, 3] = 0
+known_reward_positions = known_reward_positions.reshape(
+    [num_states * num_actions, 1])
+
+known_rewards = np.zeros([num_states, num_actions])
+known_rewards[4, 2] = 1
+known_rewards = known_rewards.reshape([num_states * num_actions, 1])
 
 unknown_reward_positions = 1 - known_reward_positions
 
 reward_models_op = tf.squeeze(
     tf.stack(
-        [(tf.random_normal(
-            stddev=1000, shape=[num_states * num_actions, 1]) *
+        [(tf.random_normal(stddev=1, shape=[num_states * num_actions, 1]) *
           unknown_reward_positions) + known_rewards
          for _ in range(num_sampled_mdps)],
         axis=1))
@@ -209,9 +248,7 @@ def train_and_save_k_of_n(*methods):
             for k in all_max_iteration_placeholders.keys():
                 all_max_iteration_placeholders[k] = int(
                     math.ceil(math.log(t + 1) + 2))
-            sess.run(
-                all_update_ops,
-                feed_dict=all_max_iteration_placeholders)
+            sess.run(all_update_ops, feed_dict=all_max_iteration_placeholders)
     print('')
     regret_update_timer.log_duration_s()
     print('')
@@ -318,7 +355,9 @@ with tf.Session(config=config) as sess:
             root_op, P, reward_models_op, avg_reward_model, gamma=gamma)
 
         k_of_n_methods = []
-        for i in [0] + list(range(99, num_sampled_mdps, 100)):
+        # for i in [0] + list(range(9, num_sampled_mdps, 10)):
+        # for i in range(num_sampled_mdps):
+        for i in [0, 799, 899, 949, 999]:
             config = KofnConfig(i, final_data['n_weights'])
             k_of_n_methods.append(
                 UncertainRewardKOfNMethod(config, root_op, P, reward_models_op,
