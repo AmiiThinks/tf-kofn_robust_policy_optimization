@@ -165,49 +165,65 @@ class GridworldTest(tf.test.TestCase):
                 ).eval()
             )
 
-    # def test_cardinal_reward_model_op(self):
-    #     with self.test_session():
-    #         num_rows = 3
-    #         num_columns = 3
-    #         num_actions = 4
-    #
-    #         goal = (0, 1)
-    #         unknown_reward_positions = [(1, 1)]
-    #         unknown_reward_means = [-1]
-    #
-    #         patient = Gridworld(num_rows, num_columns)
-    #         reward_model = patient.cardinal_reward_model_op(
-    #             goal,
-    #             unknown_reward_positions,
-    #             unknown_reward_means
-    #         )
-    #
-    #         self.assertAllEqual(
-    #             [
-    #                 [0, 0, 0],
-    #                 [0, 1, 0],
-    #                 [0, -1, 0]
-    #             ],
-    #             reward_model[:, :, 0].eval()  # North
-    #         )
-    #
-    #         self.assertAllEqual(
-    #             [
-    #                 [1, 0, 0],
-    #                 [-1, 0, 0],
-    #                 [0, 0, 0]
-    #             ],
-    #             reward_model[:, :, 1].eval()  # East
-    #         )
-    #
-    #         self.assertAllEqual(
-    #             [
-    #                 [0, -1, 0],
-    #                 [0, 0, 0],
-    #                 [0, 0, 0]
-    #             ],
-    #             reward_model[:, :, 1].eval()  # South
-    #         )
+    def test_cardinal_reward_model_op(self):
+        with self.test_session():
+            num_rows = 3
+            num_columns = 3
+            num_actions = 4
+
+            goal = (0, 1)
+            unknown_reward_positions = [(1, 1)]
+            unknown_reward_means = [-1.0]
+
+            patient = Gridworld(num_rows, num_columns)
+            reward_model = tf.reshape(
+                patient.cardinal_reward_model_op(
+                    unknown_reward_positions,
+                    unknown_reward_means,
+                    sink=goal
+                ) + patient.cardinal_reward_model_op(
+                    [goal],
+                    [1.0],
+                    sink=goal
+                ),
+                [num_rows, num_columns, num_actions]
+            )
+
+            self.assertAllEqual(
+                [
+                    [0, 0, 0],
+                    [0, 1, 0],
+                    [0, -1, 0]
+                ],
+                reward_model[:, :, 0].eval()  # North
+            )
+
+            self.assertAllEqual(
+                [
+                    [1, 0, 0],
+                    [-1, 0, 0],
+                    [0, 0, 0]
+                ],
+                reward_model[:, :, 1].eval()  # East
+            )
+
+            self.assertAllEqual(
+                [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0]
+                ],
+                reward_model[:, :, 2].eval()  # South
+            )
+
+            self.assertAllEqual(
+                [
+                    [0, 0, 1],
+                    [0, 0, -1],
+                    [0, 0, 0]
+                ],
+                reward_model[:, :, 3].eval()  # West
+            )
 
 
 if __name__ == '__main__':

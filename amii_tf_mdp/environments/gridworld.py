@@ -9,11 +9,10 @@ class Gridworld(object):
 
     @staticmethod
     def cardinal_direction_transformations():
-        return tf.constant([(-1, 0), (0, 1), (1, 0), (0, -1)])
+        return [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
     @staticmethod
-    def cardinal_direction_transformations_np():
-        return np.array([(-1, 0), (0, 1), (1, 0), (0, -1)])
+    def num_cardinal_directions(): return 4
 
     def __init__(self, num_rows, num_columns):
         self.num_rows = num_rows
@@ -30,8 +29,77 @@ class Gridworld(object):
         )
 
     def cardinal_transition_model_op(self, sink=None):
+        return tf.transpose(
+            tf.reshape(
+                tf.transpose(
+                    self._cardinal_grid_transition_model_op(sink),
+                    [2, 0, 1, 3, 4]
+                ),
+                [
+                    self.num_cardinal_directions(),
+                    self.num_rows * self.num_columns,
+                    self.num_rows * self.num_columns
+                ]
+            ),
+            [1, 0, 2]
+        )
+
+    def cardinal_reward_model_op(
+        self,
+        row_column_indices,
+        destination_rewards,
+        sink=None
+    ):
+        state_action_state_model_op = self.cardinal_transition_model_op(sink)
+        if sink is not None:
+            sink_state = tf.where(
+                tf.greater(tf.squeeze(self.indicator_state_op(*sink)), 0)
+            )[0, 0]
+            state_action_state_model_op = (
+                state_action_state_model_op -
+                tf.scatter_nd(
+                    [
+                        (sink_state, a, s)
+                        for a in range(self.num_cardinal_directions())
+                        for s in range(self.num_rows * self.num_columns)
+                    ],
+                    tf.reshape(
+                        state_action_state_model_op[sink_state, :, :],
+                        [
+                            self.num_cardinal_directions() *
+                            self.num_rows *
+                            self.num_columns
+                        ]
+                    ),
+                    shape=state_action_state_model_op.shape
+                )
+            )
+        state_actions_to_state_model_op = tf.reshape(
+            state_action_state_model_op,
+            (
+                (
+                    self.num_rows *
+                    self.num_columns *
+                    self.num_cardinal_directions()
+                ),
+                self.num_rows * self.num_columns
+            )
+        )
+        state_rewards = tf.reshape(
+            tf.scatter_nd(
+                row_column_indices,
+                destination_rewards,
+                shape=(self.num_rows, self.num_columns)
+            ),
+            (self.num_rows * self.num_columns, 1)
+        )
+        return state_actions_to_state_model_op @ state_rewards
+
+    def _cardinal_grid_transition_model_op(self, sink=None):
         indices = []
-        movement = self.__class__.cardinal_direction_transformations()
+        movement = tf.constant(
+            self.__class__.cardinal_direction_transformations()
+        )
         row_movement = movement[:, 0]
         column_movement = movement[:, 1]
         num_actions = row_movement.shape[0].value
@@ -75,52 +143,8 @@ class Gridworld(object):
             tf.stack(indices, axis=0),
             [len(indices) * num_actions, len(intuitive_shape)]
         )
-        return tf.transpose(
-            tf.reshape(
-                tf.transpose(
-                    tf.scatter_nd(
-                        indices,
-                        tf.ones([indices.shape[0]]),
-                        shape=intuitive_shape
-                    ),
-                    [2, 0, 1, 3, 4]
-                ),
-                [
-                    num_actions,
-                    self.num_rows * self.num_columns,
-                    self.num_rows * self.num_columns
-                ]
-            ),
-            [1, 0, 2]
+        return tf.scatter_nd(
+            indices,
+            tf.ones([indices.shape[0]]),
+            shape=intuitive_shape
         )
-
-    # def cardinal_reward_model_op(
-    #     self,
-    #     goal,
-    #     unknown_reward_positions,
-    #     unknown_reward_means
-    # ):
-    #     movement = self.__class__.cardinal_direction_transformations()
-    #     row_movement = movement[:, 0]
-    #     column_movement = movement[:, 1]
-    #     num_actions = movement.shape[0].value
-    #     unknown_reward_positions_dict = {p for p in unknown_reward_positions}
-    #     indices = []
-    #     for row in range(self.num_rows):
-    #         for column in range(self.num_columns):
-    #             if not(goal[0] == row and goal[1] == column):
-    #                 # TODO
-    #                 np.concatenate(
-    #                     (
-    #                         np.minimum(
-    #                             self.num_rows - 1,
-    #                             np.maximum(0, row + row_movement)
-    #                         ),
-    #                         np.minimum(
-    #                             self.num_columns - 1,
-    #                             np.maximum(0, column + column_movement)
-    #                         )
-    #                     ),
-    #                     axis=1
-    #                 )
-    #             indices.append(tf.stack(successors, axis=1))
