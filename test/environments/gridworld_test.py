@@ -54,8 +54,7 @@ class GridworldTest(tf.test.TestCase):
             num_rows = 2
             num_columns = 3
             num_actions = 4
-            source = (0, 0)
-            goal = (1, 2)
+            sink = (1, 2)
 
             patient = Gridworld(num_rows, num_columns)
 
@@ -64,8 +63,7 @@ class GridworldTest(tf.test.TestCase):
                 Gridworld.cardinal_direction_names()
             )
             state_action_state_model = patient.cardinal_transition_model_op(
-                source,
-                goal
+                sink
             )
 
             self.assertAllEqual(
@@ -145,20 +143,20 @@ class GridworldTest(tf.test.TestCase):
             self.assertAllEqual(
                 [
                     [  # North
-                        [1, 0, 0],
-                        [0, 0, 0]
+                        [0, 0, 0],
+                        [0, 0, 1]
                     ],
                     [  # East
-                        [1, 0, 0],
-                        [0, 0, 0]
+                        [0, 0, 0],
+                        [0, 0, 1]
                     ],
                     [  # South
-                        [1, 0, 0],
-                        [0, 0, 0]
+                        [0, 0, 0],
+                        [0, 0, 1]
                     ],
                     [  # West
-                        [1, 0, 0],
-                        [0, 0, 0]
+                        [0, 0, 0],
+                        [0, 0, 1]
                     ]
                 ],
                 tf.reshape(
@@ -167,7 +165,7 @@ class GridworldTest(tf.test.TestCase):
                 ).eval()
             )
 
-    # def test_cardinal_reward_model_op():
+    # def test_cardinal_reward_model_op(self):
     #     with self.test_session():
     #         num_rows = 3
     #         num_columns = 3
