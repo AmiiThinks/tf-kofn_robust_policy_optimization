@@ -77,3 +77,23 @@ def k_of_n_regret_update(
         sum(inst_regrets[1:], inst_regrets[0])
     )
     return regret_update
+
+
+class DeterministicKofnConfig(object):
+    def __init__(self, k, n):
+        self.n_weights = [0.0] * n
+        self.n_weights[n - 1] = 1.0
+
+        self.k = k
+        self.k_weights = [0.0] * n
+        self.k_weights[k - 1] = 1.0
+
+    def num_sampled_mdps(self): return len(self.n_weights)
+
+    def mdp_weights_op(self, evs_op):
+        return tf.expand_dims(
+            k_of_n_mdp_weights(self.n_weights, self.k_weights,
+                               tf.squeeze(evs_op)),
+            axis=1)
+
+    def name(self): return 'k={}'.format(self.k)

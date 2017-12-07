@@ -3,13 +3,15 @@ import tensorflow as tf
 import os
 import math
 import numpy as np
-from amii_tf_mdp.robust.k_of_n import k_of_n_mdp_weights
+from amii_tf_mdp.robust.k_of_n import DeterministicKofnConfig
 from amii_tf_mdp.discounted_mdp import generalized_policy_iteration_op, \
-    inst_regrets_op, associated_ops, value_ops
+    associated_ops, value_ops
 from amii_tf_mdp.utils.timer import Timer
 from amii_tf_mdp.utils.quadrature import midpoint_quadrature
 from amii_tf_mdp.utils.experiment import PickleExperiment
 from amii_tf_mdp.utils.random import reset_random_state
+from amii_tf_mdp.robust.uncertain_reward_discounted_continuing_kofn import \
+    UncertainRewardDiscountedContinuingKofn
 
 random_seed = 10
 eval_random_seed = 42
@@ -25,15 +27,15 @@ num_states = 7
 num_actions = 4
 gamma = 0.9
 final_data = {
-    'num_training_iterations': 500,
-    'num_eval_mdp_reps': 10,
-    'n_weights': [0.0] * 999 + [1.0],
+    'num_training_iterations': 200,
+    'num_eval_mdp_reps': 200,
+    'n': 1000,
     'num_states': num_states,
     'num_actions': num_actions,
     'discount_factor': gamma,
     'methods': {}
 }
-num_sampled_mdps = len(final_data['n_weights'])
+num_sampled_mdps = final_data['n']
 
 root_op = tf.constant(
     np.array([1.0] + [0.0] * (num_states - 1),
@@ -127,90 +129,6 @@ def eval_policy(evs):
     return evaluation_evs, eval_timer.duration_s(), area
 
 
-class KofnConfig(object):
-    def __init__(self, i, n_weights):
-        self.n_weights = n_weights
-        self.k = i + 1
-        self.k_weights = [0.0] * self.num_sampled_mdps()
-        self.k_weights[i] = 1.0
-
-    def num_sampled_mdps(self):
-        return len(self.n_weights)
-
-    def mdp_weights_op(self, evs_op):
-        return tf.expand_dims(
-            k_of_n_mdp_weights(self.n_weights, self.k_weights,
-                               tf.squeeze(evs_op)),
-            axis=1)
-
-    def name(self):
-        return 'k={}'.format(self.k)
-
-
-class UncertainRewardKOfNMethod(object):
-    def __init__(self, config, root_op, transition_model_op, reward_models_op,
-                 gamma):
-        if reward_models_op.shape[1].value != config.num_sampled_mdps():
-            print(reward_models_op.shape[1].value)
-            print(config.num_sampled_mdps())
-        assert reward_models_op.shape[1].value == config.num_sampled_mdps()
-        self.config = config
-        self.root_op = root_op
-        self.transition_model_op = transition_model_op
-        self.reward_models_op = reward_models_op
-
-        self.q_regrets_op = tf.Variable(
-            tf.zeros([self.num_states(), self.num_actions()]))
-
-        self.Pi, self.action_values_op, self.state_values_op, self.evs_op = (
-            associated_ops(
-                self.q_regrets_op,
-                root_op,
-                transition_model_op,
-                reward_models_op,
-                gamma=gamma))
-
-        assert (len(self.evs_op.shape) == 2)
-        assert (self.evs_op.shape[0].value == reward_models_op.shape[1].value)
-        assert (self.evs_op.shape[1].value == 1)
-
-        self.mdp_weights_op = self.config.mdp_weights_op(self.evs_op)
-
-        self.ev_op = tf.squeeze(
-            tf.transpose(self.evs_op) @ self.mdp_weights_op)
-
-        self.max_num_training_pe_iterations = tf.placeholder(tf.int32)
-        (self.training_action_values_op, self.training_state_values_op,
-         self.training_evs_op) = value_ops(
-             self.Pi,
-             root_op,
-             transition_model_op,
-             reward_models_op,
-             gamma=gamma,
-             max_num_iterations=self.max_num_training_pe_iterations)
-
-        self.training_mdp_weights_op = self.config.mdp_weights_op(
-            self.training_evs_op)
-
-        self.r_s_op = tf.reshape(
-            inst_regrets_op(self.training_action_values_op, Pi=self.Pi)
-            @ self.training_mdp_weights_op,
-            shape=self.q_regrets_op.shape)
-
-        # next_q_regrets = tf.maximum(0.0, self.q_regrets_op + self.r_s_op)
-        next_q_regrets = self.q_regrets_op + self.r_s_op
-        self.update_op = tf.assign(self.q_regrets_op, next_q_regrets)
-
-    def num_states(self):
-        return self.root_op.shape[0].value
-
-    def num_actions(self):
-        return int(self.transition_model_op.shape[0].value / self.num_states())
-
-    def name(self):
-        return self.config.name()
-
-
 def train_and_save_k_of_n(*methods):
     method_data = final_data['methods']
 
@@ -258,7 +176,7 @@ def train_and_save_k_of_n(*methods):
     # TODO
     # if 'num_sequences' not in final_data:
     #     final_data['num_sequences'] = (
-    #         q_regrets_op.shape[0].value * q_regrets_op.shape[1].value)
+    #         advantages_op.shape[0].value * advantages_op.shape[1].value)
     for i in range(len(methods)):
         method_data[methods[i].name()] = {
             'training': {
@@ -344,6 +262,8 @@ def eval_baseline(root_op,
         'duration_s': evaluation_duration_s,
         'midpoint_area': area
     }
+    print('## Policy')
+    print(sess.run(policy_op))
 
 
 # config = tf.ConfigProto(log_device_placement=True)
@@ -355,13 +275,11 @@ with tf.Session(config=config) as sess:
             root_op, P, reward_models_op, avg_reward_model, gamma=gamma)
 
         k_of_n_methods = []
-        # for i in [0] + list(range(9, num_sampled_mdps, 10)):
-        # for i in range(num_sampled_mdps):
         for i in [0, 799, 899, 949, 999]:
-            config = KofnConfig(i, final_data['n_weights'])
+            config = DeterministicKofnConfig(i + 1, final_data['n'])
             k_of_n_methods.append(
-                UncertainRewardKOfNMethod(config, root_op, P, reward_models_op,
-                                          gamma))
+                UncertainRewardDiscountedContinuingKofn(
+                    config, root_op, P, reward_models_op, gamma))
         sess.run(tf.global_variables_initializer())
         train_and_save_k_of_n(*k_of_n_methods)
         experiment.save(final_data, 'every_k')
