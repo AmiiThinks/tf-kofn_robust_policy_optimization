@@ -53,30 +53,6 @@ class Gridworld(object):
         sink=None
     ):
         state_action_state_model_op = self.cardinal_transition_model_op(sink)
-        if sink is not None:
-            # TODO This is slow
-            sink_state = tf.where(
-                tf.greater(tf.squeeze(self.indicator_state_op(*sink)), 0)
-            )[0, 0]
-            state_action_state_model_op = (
-                state_action_state_model_op -
-                tf.scatter_nd(
-                    [
-                        (sink_state, a, s)
-                        for a in range(self.num_cardinal_directions())
-                        for s in range(self.num_rows * self.num_columns)
-                    ],
-                    tf.reshape(
-                        state_action_state_model_op[sink_state, :, :],
-                        [
-                            self.num_cardinal_directions() *
-                            self.num_rows *
-                            self.num_columns
-                        ]
-                    ),
-                    shape=state_action_state_model_op.shape
-                )
-            )
         state_actions_to_state_model_op = tf.reshape(
             state_action_state_model_op,
             (
@@ -88,7 +64,7 @@ class Gridworld(object):
                 self.num_rows * self.num_columns
             )
         )
-        state_rewards = tf.reshape(
+        state_rewards_op = tf.reshape(
             tf.scatter_nd(
                 row_column_indices,
                 destination_rewards,
@@ -96,7 +72,35 @@ class Gridworld(object):
             ),
             (self.num_rows * self.num_columns, 1)
         )
-        return state_actions_to_state_model_op @ state_rewards
+        state_action_rewards_op = (
+            state_actions_to_state_model_op @ state_rewards_op
+        )
+        if sink is not None:
+            temp = tf.reshape(
+                state_action_rewards_op,
+                [
+                    self.num_rows,
+                    self.num_columns,
+                    self.num_cardinal_directions()
+                ]
+            )
+            state_action_rewards_op = tf.reshape(
+                temp - tf.scatter_nd(
+                    [
+                        (sink[0], sink[1], a)
+                        for a in range(self.num_cardinal_directions())
+                    ],
+                    temp[sink[0], sink[1], :],
+                    shape=temp.shape
+                ),
+                [
+                    self.num_rows *
+                    self.num_columns *
+                    self.num_cardinal_directions(),
+                    1
+                ]
+            )
+        return state_action_rewards_op
 
     def _cardinal_grid_transition_model_op(self, sink=None):
         indices = []
