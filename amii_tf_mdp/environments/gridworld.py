@@ -16,6 +16,7 @@ class Gridworld(object):
     def __init__(self, num_rows, num_columns):
         self.num_rows = num_rows
         self.num_columns = num_columns
+        self._cardinal_transition_model_ops = {}
 
     def indicator_state_op(self, *state):
         return tf.reshape(
@@ -28,20 +29,22 @@ class Gridworld(object):
         )
 
     def cardinal_transition_model_op(self, sink=None):
-        return tf.transpose(
-            tf.reshape(
-                tf.transpose(
-                    self._cardinal_grid_transition_model_op(sink),
-                    [2, 0, 1, 3, 4]
+        if sink not in self._cardinal_transition_model_ops:
+            self._cardinal_transition_model_ops[sink] = tf.transpose(
+                tf.reshape(
+                    tf.transpose(
+                        self._cardinal_grid_transition_model_op(sink),
+                        [2, 0, 1, 3, 4]
+                    ),
+                    [
+                        self.num_cardinal_directions(),
+                        self.num_rows * self.num_columns,
+                        self.num_rows * self.num_columns
+                    ]
                 ),
-                [
-                    self.num_cardinal_directions(),
-                    self.num_rows * self.num_columns,
-                    self.num_rows * self.num_columns
-                ]
-            ),
-            [1, 0, 2]
-        )
+                [1, 0, 2]
+            )
+        return self._cardinal_transition_model_ops[sink]
 
     def cardinal_reward_model_op(
         self,
@@ -51,6 +54,7 @@ class Gridworld(object):
     ):
         state_action_state_model_op = self.cardinal_transition_model_op(sink)
         if sink is not None:
+            # TODO This is slow
             sink_state = tf.where(
                 tf.greater(tf.squeeze(self.indicator_state_op(*sink)), 0)
             )[0, 0]

@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np  # For eigen decomposition to get steady state distribution
 from amii_tf_mdp.discounted_mdp import inst_regrets_op, associated_ops, \
     value_ops
 from amii_tf_mdp.utils.tensor import row_normalize_op
@@ -25,7 +26,8 @@ class UncertainRewardDiscountedContinuingKofn(object):
             root_op,
             transition_model_op,
             reward_models_op,
-            gamma=gamma)
+            gamma=gamma,
+            max_num_iterations=int(1e3))
 
         assert (len(self.evs_op.shape) == 2)
         assert (self.evs_op.shape[0].value == reward_models_op.shape[1].value)
@@ -44,6 +46,7 @@ class UncertainRewardDiscountedContinuingKofn(object):
              transition_model_op,
              reward_models_op,
              gamma=gamma,
+             threshold=1e-8,
              max_num_iterations=self.max_num_training_pe_iterations)
 
         self.training_mdp_weights_op = self.config.mdp_weights_op(
@@ -67,9 +70,36 @@ class UncertainRewardDiscountedContinuingKofn(object):
         '''
         self.policy_op = row_normalize_op(self.advantages_op)
 
+        '''
+        Probability of transitioning to each state from each state under
+        this policy and transition model.
+
+        |States| by |States| Tensor.
+        '''
+        self.state_to_state_transitions_op = self.Pi_op @ transition_model_op
+
     def num_states(self): return self.root_op.shape[0].value
 
     def num_actions(self):
         return int(self.transition_model_op.shape[0].value / self.num_states())
 
     def name(self): return self.config.name()
+
+    def steady_state_distribution(self, sess):
+        '''
+
+        Params
+        ------
+        `sess`: TensorFlow session. Does not look like a general eigen
+            decomposition is implemented in TensorFlow yet, so
+        '''
+        d, p = np.linalg.eig(sess.run(self.state_to_state_transitions_op))
+        s = (-d).argsort()  # Sort decreasing
+        p = p[:, s]
+        p_inv = np.linalg.inv(p)
+        d_inf = np.zeros(p.shape)
+        d_inf[0, 0] = 1
+        M_inf = p @ d_inf @ p_inv
+        # TODO
+        print((M_inf[:, 0] - M_inf[:, 1]).max())
+        return np.expand_dims(M_inf[:, 0], axis=1)

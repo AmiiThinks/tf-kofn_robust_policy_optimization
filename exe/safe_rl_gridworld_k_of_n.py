@@ -12,6 +12,8 @@ from amii_tf_mdp.utils.experiment import PickleExperiment
 from amii_tf_mdp.utils.random import reset_random_state
 from amii_tf_mdp.robust.uncertain_reward_discounted_continuing_kofn import \
     UncertainRewardDiscountedContinuingKofn
+from amii_tf_mdp.environments.gridworld import Gridworld
+
 
 random_seed = 10
 eval_random_seed = 42
@@ -23,12 +25,17 @@ experiment = PickleExperiment(
     log_level=tf.logging.INFO)
 experiment.ensure_present()
 
-num_states = 7
-num_actions = 4
+num_rows = 3
+num_columns = 10
+gridworld = Gridworld(num_rows, num_columns)
+
+num_actions = gridworld.num_cardinal_directions()
+num_states = num_rows * num_columns
 gamma = 0.9
+
 final_data = {
-    'num_training_iterations': 200,
-    'num_eval_mdp_reps': 200,
+    'num_training_iterations': 500,
+    'num_eval_mdp_reps': 1,
     'n': 1000,
     'num_states': num_states,
     'num_actions': num_actions,
@@ -37,71 +44,48 @@ final_data = {
 }
 num_sampled_mdps = final_data['n']
 
-root_op = tf.constant(
-    np.array([1.0] + [0.0] * (num_states - 1),
-             dtype='float32').reshape([num_states, 1]))
-P = np.zeros([num_states, num_actions, num_states], dtype='float32')
-P[0, 0, 1] = 1
-P[0, 1, 2] = 1
-P[0, 2, 0] = 1
-P[0, 3, 0] = 1
+root_op = tf.cast(
+    gridworld.indicator_state_op(num_rows - 1, num_columns - 1),
+    tf.float32
+)
+goal = (0, num_columns - 1)
+P = tf.reshape(
+    gridworld.cardinal_transition_model_op(sink=goal),
+    (num_states * num_actions, num_states)
+)
 
-P[1, 0, 1] = 1
-P[1, 1, 3] = 1
-P[1, 2, 0] = 1
-P[1, 3, 1] = 1
+unknown_reward_positions = [(1, c) for c in range(1, num_columns)]
+unknown_reward_means = [0.0 for _ in range(1, num_columns)]
 
-P[2, 0, 3] = 1
-P[2, 1, 4] = 1
-P[2, 2, 2] = 1
-P[2, 3, 0] = 1
+known_rewards_op = (
+    gridworld.cardinal_reward_model_op(
+        unknown_reward_positions,
+        unknown_reward_means,
+        sink=goal
+    ) + gridworld.cardinal_reward_model_op(
+        [goal],
+        [0.1],
+        sink=goal
+    )
+)
 
-P[3, 0, 3] = 1
-P[3, 1, 5] = 1
-P[3, 2, 2] = 1
-P[3, 3, 1] = 1
+reward_models = []
+for _ in range(num_sampled_mdps):
+    reward_models.append(
+        known_rewards_op + gridworld.cardinal_reward_model_op(
+            unknown_reward_positions,
+            [
+                tf.random_normal(stddev=0.1, shape=[])
+                for _ in unknown_reward_positions
+            ],
+            sink=goal
+        )
+    )
 
-P[4, 0, 5] = 1
-P[4, 1, 4] = 1
-P[4, 2, 6] = 1
-P[4, 3, 2] = 1
-
-P[5, 0, 5] = 1
-P[5, 1, 5] = 1
-P[5, 2, 4] = 1
-P[5, 3, 3] = 1
-
-P[6, 0, 6] = 1
-P[6, 1, 6] = 1
-P[6, 2, 6] = 1
-P[6, 3, 6] = 1
-
-P = tf.constant(P.reshape([num_states * num_actions, num_states]))
-
-known_reward_positions = np.ones([num_states, num_actions], dtype='float32')
-known_reward_positions[0, 1] = 0
-known_reward_positions[3, 2] = 0
-known_reward_positions[4, 3] = 0
-known_reward_positions = known_reward_positions.reshape(
-    [num_states * num_actions, 1])
-
-known_rewards = np.zeros([num_states, num_actions])
-known_rewards[4, 2] = 1
-known_rewards = known_rewards.reshape([num_states * num_actions, 1])
-
-unknown_reward_positions = 1 - known_reward_positions
-
-reward_models_op = tf.squeeze(
-    tf.stack(
-        [(tf.random_normal(stddev=1, shape=[num_states * num_actions, 1]) *
-          unknown_reward_positions) + known_rewards
-         for _ in range(num_sampled_mdps)],
-        axis=1))
+reward_models_op = tf.squeeze(tf.stack(reward_models, axis=1))
 assert (reward_models_op.shape[0] == num_states * num_actions)
 assert (reward_models_op.shape[1] == num_sampled_mdps)
 assert (len(reward_models_op.shape) == 2)
-
-avg_reward_model = known_rewards
 
 
 def eval_policy(evs):
@@ -136,7 +120,7 @@ def train_and_save_k_of_n(*methods):
     all_update_ops = [m.update_op for m in methods]
     all_n_evs_ops = [tf.squeeze(m.evs_op) for m in methods]
     all_max_iteration_placeholders = {
-        m.max_num_training_pe_iterations: 2
+        m.max_num_training_pe_iterations: int(1e1)
         for m in methods
     }
 
@@ -165,18 +149,13 @@ def train_and_save_k_of_n(*methods):
                 print('')
             for k in all_max_iteration_placeholders.keys():
                 all_max_iteration_placeholders[k] = int(
-                    math.ceil(math.log(t + 1) + 2))
+                    max(all_max_iteration_placeholders[k], t))
             sess.run(all_update_ops, feed_dict=all_max_iteration_placeholders)
     print('')
     regret_update_timer.log_duration_s()
     print('')
 
     all_training_evs = np.array(all_training_evs)
-
-    # TODO
-    # if 'num_sequences' not in final_data:
-    #     final_data['num_sequences'] = (
-    #         advantages_op.shape[0].value * advantages_op.shape[1].value)
     for i in range(len(methods)):
         method_data[methods[i].name()] = {
             'training': {
@@ -209,7 +188,11 @@ def train_and_save_k_of_n(*methods):
                     'evs': evs,
                     'duration_s': eval_timer.duration_s() / len(methods),
                     'midpoint_area': area
-                }
+                },
+                'policy': sess.run(methods[i].policy_op),
+                'steady_state_distribution': (
+                    methods[i].steady_state_distribution(sess)
+                )
             }
             if len(evs) > 0:
                 print('# {}'.format(methods[i].name()))
@@ -225,7 +208,7 @@ def train_and_save_k_of_n(*methods):
 def eval_baseline(root_op,
                   transition_model_op,
                   reward_models_op,
-                  avg_reward_model,
+                  known_rewards_op,
                   gamma=0.9):
     name = 'Mean'
     print('# {}'.format(name))
@@ -236,7 +219,7 @@ def eval_baseline(root_op,
 
     policy_op = generalized_policy_iteration_op(
         transition_model_op,
-        avg_reward_model,
+        known_rewards_op,
         gamma=gamma,
         t=10,
         pi_threshold=1e-15,
@@ -248,12 +231,13 @@ def eval_baseline(root_op,
         transition_model_op,
         reward_models_op,
         gamma=gamma,
-        normalize_policy=False)
+        normalize_policy=False,
+        max_num_iterations=int(1e3))
 
     evaluation_evs, evaluation_duration_s, area = eval_policy(baseline_evs_op)
 
     training_action_values_op, _, training_ev_op = value_ops(
-        Pi, root_op, transition_model_op, avg_reward_model, gamma=gamma)
+        Pi, root_op, transition_model_op, known_rewards_op, gamma=gamma)
     training_ev_op = tf.squeeze(training_ev_op)
 
     d['training'] = {'ev': sess.run(training_ev_op)}
@@ -261,9 +245,8 @@ def eval_baseline(root_op,
         'evs': evaluation_evs,
         'duration_s': evaluation_duration_s,
         'midpoint_area': area
-    }
-    print('## Policy')
-    print(sess.run(policy_op))
+    },
+    d['policy'] = sess.run(policy_op)
 
 
 # config = tf.ConfigProto(log_device_placement=True)
@@ -272,10 +255,10 @@ config.gpu_options.allow_growth = True
 with tf.Session(config=config) as sess:
     with sess.as_default():
         eval_baseline(
-            root_op, P, reward_models_op, avg_reward_model, gamma=gamma)
+            root_op, P, reward_models_op, known_rewards_op, gamma=gamma)
 
         k_of_n_methods = []
-        for i in [0, 799, 899, 949, 999]:
+        for i in [0] + list(range(99, final_data['n'], 100)):
             config = DeterministicKofnConfig(i + 1, final_data['n'])
             k_of_n_methods.append(
                 UncertainRewardDiscountedContinuingKofn(
