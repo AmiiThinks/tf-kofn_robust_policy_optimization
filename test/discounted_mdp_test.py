@@ -4,7 +4,8 @@ from amii_tf_mdp.discounted_mdp import root_value_op, \
     primal_action_value_policy_evaluation_op, \
     dual_action_value_policy_evaluation_op, \
     regret_matching_op, \
-    generalized_policy_iteration_op
+    generalized_policy_iteration_op, \
+    state_successor_policy_evaluation_op
 from amii_tf_mdp.utils.tensor import row_normalize_op, \
     matrix_to_block_matrix_op
 from amii_tf_mdp.utils.random import reset_random_state
@@ -183,6 +184,72 @@ class DiscountedMdpTest(tf.test.TestCase):
                                            row_normalize_op(
                                                tf.ones([num_states, 1])),
                                            Pi_5_op @ q_op)).eval())
+
+    def test_recover_state_distribution_from_state_action_distribution(self):
+        num_states = 3
+        num_actions = 2
+        gamma = 0.9
+        with self.test_session() as sess:
+            reset_random_state(101)
+
+            policy_op = row_normalize_op(
+                [
+                    [1.0, 2.0],
+                    [3.0, 0.0],
+                    [5.0, 6.0]
+                ]
+            )
+            indices_op = tf.stack(
+                (
+                    tf.range(num_states, dtype=tf.int64),
+                    tf.argmax(policy_op, axis=1)
+                ),
+                axis=1
+            )
+            non_zero_probs_op = tf.gather_nd(policy_op, indices_op)
+
+            self.assertAllClose(
+                [2 / 3.0, 1.0, 0.54545456],
+                non_zero_probs_op.eval()
+            )
+
+            Pi_op = matrix_to_block_matrix_op(policy_op)
+            P = sess.run(
+                row_normalize_op(
+                    tf.random_normal(
+                        shape=[num_states * num_actions, num_states])))
+
+            # This only works when H is very close to the true state-action
+            # distribution.
+            H_op = state_action_successor_policy_evaluation_op(
+                P, Pi_op, gamma)
+
+            A_op = tf.matmul(Pi_op, H_op)
+
+            columns_to_gather_op = (
+                indices_op[:, 1] + num_actions * indices_op[:, 0]
+            )
+            thin_A_op = tf.transpose(
+                tf.gather(
+                    tf.transpose(A_op),
+                    columns_to_gather_op
+                )
+            )
+
+            M_op = thin_A_op / non_zero_probs_op
+            sum_M_op = tf.reduce_sum(M_op, axis=1)
+            self.assertAllClose(
+                tf.ones_like(sum_M_op).eval(),
+                sum_M_op.eval()
+            )
+            self.assertAllClose(
+                A_op.eval(),
+                tf.matmul(M_op, Pi_op).eval()
+            )
+            self.assertAllClose(
+                M_op.eval(),
+                state_successor_policy_evaluation_op(P, Pi_op, gamma).eval()
+            )
 
 
 if __name__ == '__main__':

@@ -1,7 +1,6 @@
 import tensorflow as tf
-import numpy as np  # For eigen decomposition to get steady state distribution
 from amii_tf_mdp.discounted_mdp import inst_regrets_op, associated_ops, \
-    value_ops
+    value_ops, state_successor_policy_evaluation_op
 from amii_tf_mdp.utils.tensor import row_normalize_op
 
 
@@ -71,12 +70,22 @@ class UncertainRewardDiscountedContinuingKofn(object):
         self.policy_op = row_normalize_op(self.advantages_op)
 
         '''
-        Probability of transitioning to each state from each state under
-        this policy and transition model.
+        Discounted state successor distribution.
 
         |States| by |States| Tensor.
         '''
-        self.state_to_state_transitions_op = self.Pi_op @ transition_model_op
+        self.state_successor_op = state_successor_policy_evaluation_op(
+            transition_model_op, self.Pi_op, gamma=gamma)
+
+        '''
+        Probability of terminating in each state.
+
+        |States| by 1 Tensor
+        '''
+        self.state_distribution_op = tf.matmul(
+            tf.transpose(self.state_successor_op), root_op
+        )
+
 
     def num_states(self): return self.root_op.shape[0].value
 

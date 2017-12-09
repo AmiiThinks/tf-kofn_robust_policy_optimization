@@ -13,8 +13,10 @@ def state_action_successor_policy_evaluation_op(P,
     P = tf.convert_to_tensor(P)
     num_states = P.shape[1].value
     num_actions = int(P.shape[0].value / num_states)
-    ones = tf.ones([num_states * num_actions, num_states * num_actions])
-    H_0 = (ones * 1.0 / (num_states * num_actions))
+    H_0 = tf.constant(
+        1.0 / (num_states * num_actions),
+        shape=(num_states * num_actions, num_states * num_actions)
+    )
 
     def H_dp1_op(H_d):
         return (((1 - gamma) * tf.eye(H_d.shape[0].value)) +
@@ -192,3 +194,36 @@ def associated_ops(action_weights,
         Pi, root_op, transition_model_op, reward_model_op, **kwargs)
 
     return Pi, action_values_op, state_values_op, ev_op
+
+
+def state_successor_policy_evaluation_op(P,
+                                         Pi,
+                                         gamma=0.9,
+                                         threshold=1e-15,
+                                         max_num_iterations=-1):
+    P = tf.convert_to_tensor(P)
+    num_states = P.shape[1].value
+    M_0 = tf.constant(
+        1.0 / num_states,
+        shape=(num_states, num_states)
+    )
+
+    def M_dp1_op(M_d):
+        return (((1 - gamma) * tf.eye(M_d.shape[0].value)) +
+                (gamma * Pi @ P @ M_d))
+
+    def error_above_threshold(M_d, M_dp1):
+        return tf.reduce_sum(tf.abs(M_dp1 - M_d)) > threshold
+
+    def cond(d, M_d, M_dp1):
+        error_op = error_above_threshold(M_d, M_dp1)
+        return tf.squeeze(
+            tf.logical_or(
+                tf.logical_and(max_num_iterations < 1, error_op),
+                tf.logical_and(tf.less(d, max_num_iterations), error_op)))
+
+    return tf.while_loop(
+        cond,
+        lambda d, _, M_d: [d + 1, M_d, M_dp1_op(M_d)],
+        [1, M_0, M_dp1_op(M_0)],
+        parallel_iterations=1)[-1]

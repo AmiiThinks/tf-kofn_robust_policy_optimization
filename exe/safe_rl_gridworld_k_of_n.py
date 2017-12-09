@@ -5,7 +5,8 @@ import math
 import numpy as np
 from amii_tf_mdp.robust.k_of_n import DeterministicKofnConfig
 from amii_tf_mdp.discounted_mdp import generalized_policy_iteration_op, \
-    associated_ops, value_ops
+    associated_ops, value_ops, \
+    state_successor_policy_evaluation_op
 from amii_tf_mdp.utils.timer import Timer
 from amii_tf_mdp.utils.quadrature import midpoint_quadrature
 from amii_tf_mdp.utils.experiment import PickleExperiment
@@ -203,8 +204,8 @@ def train_and_save_k_of_n(*methods):
                     'midpoint_area': area
                 },
                 'policy': sess.run(methods[i].policy_op),
-                'state_to_state_transitions': (
-                    sess.run(methods[i].state_to_state_transitions_op)
+                'state_distribution': sess.run(
+                    methods[i].state_distribution_op
                 )
             }
             if len(evs) > 0:
@@ -260,7 +261,16 @@ def eval_baseline(root_op,
         'midpoint_area': area
     },
     d['policy'] = sess.run(policy_op),
-    d['state_to_state_transitions'] = sess.run(Pi @ transition_model_op)
+    d['state_distribution'] = sess.run(
+        tf.matmul(
+            tf.transpose(
+                state_successor_policy_evaluation_op(
+                    transition_model_op,
+                    Pi,
+                    gamma=gamma)),
+            root_op
+        )
+    )
 
 
 total_timer = Timer('Experiment')
