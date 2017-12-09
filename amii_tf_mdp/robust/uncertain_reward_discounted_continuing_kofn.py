@@ -86,7 +86,6 @@ class UncertainRewardDiscountedContinuingKofn(object):
             tf.transpose(self.state_successor_op), root_op
         )
 
-
     def num_states(self): return self.root_op.shape[0].value
 
     def num_actions(self):

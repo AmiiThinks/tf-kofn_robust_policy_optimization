@@ -159,7 +159,11 @@ class Gridworld(object):
             row_column_policy,
             discounted_row_column_distribution=None,
             plt=plt,
-            threshold=1e-15
+            threshold=1e-15,
+            source=None,
+            goal=None,
+            uncertainty=None,
+            ax=None
         ):
             grid_img = Gridworld.Painter.Tiles.grid_rgb_img(
                 row_column_policy.shape[0],
@@ -167,8 +171,9 @@ class Gridworld(object):
             )
 
             plt.rc('grid', linestyle='-', color=Gridworld.Painter.Tiles.GRID_GREY)
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
+            if ax is None:
+                fig = plt.figure()
+                ax = fig.add_subplot(111)
             plt.grid(True)
 
             # Remove ticks and tick labels
@@ -196,20 +201,23 @@ class Gridworld(object):
             ):
                 ax.add_patch(patch)
 
-            Gridworld.Painter.add_top_left_corner_label(
-                row_column_policy.shape[0],
-                row_column_policy.shape[1],
-                r'$S$'
-            )
-            Gridworld.Painter.add_top_left_corner_label(
-                1, row_column_policy.shape[1], r'$G$')
-            Gridworld.Painter.add_center_label(
-                1, row_column_policy.shape[1], '0.1')
+            if source is not None:
+                Gridworld.Painter.add_top_left_corner_label(
+                    source[0] + 1,
+                    source[1] + 1,
+                    r'$S$'
+                )
 
-            for c in range(1, row_column_policy.shape[1]):
+            if goal is not None:
+                Gridworld.Painter.add_top_left_corner_label(
+                    goal[0] + 1, goal[1] + 1, r'$G$')
                 Gridworld.Painter.add_center_label(
-                    2, c + 1, r"$\sigma={}$".format(0.1))
-            return fig, ax
+                    goal[0] + 1, goal[1] + 1, '{}'.format(goal[2]))
+
+            if uncertainty is not None:
+                for r, c, label in uncertainty:
+                    Gridworld.Painter.add_center_label(r + 1, c + 1, label)
+            return ax
 
     def __init__(self, num_rows, num_columns):
         self.num_rows = num_rows
@@ -391,7 +399,13 @@ if __name__ == '__main__':
        [ 0.15257818,  0.        ,  0.        ,  0.84742177]])
     row_column_policy = k_200_policy.reshape([num_rows, num_columns, 4])
 
-    fig, ax = Gridworld.Painter.draw(
+    uncertainty = []
+    for c in range(1, row_column_policy.shape[1]):
+        uncertainty.append((1, c, r"$\sigma={}$".format(0.1)))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(121)
+    Gridworld.Painter.draw(
         row_column_policy,
         np.array([[  1.40720793e-17,   5.25108597e-04,   2.19317898e-03,
           4.96153440e-03,   8.52138456e-03,   1.39449192e-02,
@@ -405,7 +419,38 @@ if __name__ == '__main__':
           6.84902770e-03,   1.26174437e-02,   2.17671245e-02,
           3.58961523e-02,   5.19143939e-02,   7.62679577e-02,
           1.00000001e-01]]),
-        threshold=1e-10
+        threshold=1e-10,
+        source=(
+            row_column_policy.shape[0] - 1,
+            row_column_policy.shape[1] - 1
+        ),
+        goal=(0, row_column_policy.shape[1] - 1, 0.1),
+        uncertainty=uncertainty,
+        ax=ax
+    )
+    ax = fig.add_subplot(122)
+    Gridworld.Painter.draw(
+        row_column_policy,
+        np.array([[  1.40720793e-17,   5.25108597e-04,   2.19317898e-03,
+          4.96153440e-03,   8.52138456e-03,   1.39449192e-02,
+          2.20358949e-02,   2.95764264e-02,   4.16728668e-02,
+          4.98644024e-01],
+       [  1.40720793e-17,   5.83454152e-04,   1.91175693e-03,
+          3.31963645e-03,   4.50667180e-03,   6.97296951e-03,
+          1.05394088e-02,   1.08268056e-02,   1.67267621e-02,
+          1.37320356e-02],
+       [  1.40720793e-17,   6.48282294e-04,   2.84448825e-03,
+          6.84902770e-03,   1.26174437e-02,   2.17671245e-02,
+          3.58961523e-02,   5.19143939e-02,   7.62679577e-02,
+          1.00000001e-01]]),
+        threshold=1e-10,
+        source=(
+            row_column_policy.shape[0] - 1,
+            row_column_policy.shape[1] - 1
+        ),
+        goal=(0, row_column_policy.shape[1] - 1, 0.1),
+        uncertainty=uncertainty,
+        ax=ax
     )
 
     plt.show()
