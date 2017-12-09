@@ -84,22 +84,3 @@ class UncertainRewardDiscountedContinuingKofn(object):
         return int(self.transition_model_op.shape[0].value / self.num_states())
 
     def name(self): return self.config.name()
-
-    def steady_state_distribution(self, sess):
-        '''
-
-        Params
-        ------
-        `sess`: TensorFlow session. Does not look like a general eigen
-            decomposition is implemented in TensorFlow yet, so
-        '''
-        d, p = np.linalg.eig(sess.run(self.state_to_state_transitions_op))
-        s = (-d).argsort()  # Sort decreasing
-        p = p[:, s]
-        p_inv = np.linalg.inv(p)
-        d_inf = np.zeros(p.shape)
-        d_inf[0, 0] = 1
-        M_inf = p @ d_inf @ p_inv
-        # TODO
-        print((M_inf[:, 0] - M_inf[:, 1]).max())
-        return np.expand_dims(M_inf[:, 0], axis=1)

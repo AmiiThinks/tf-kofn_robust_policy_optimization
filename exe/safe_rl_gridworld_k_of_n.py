@@ -35,7 +35,7 @@ with setup_timer:
     gamma = 0.9
 
     final_data = {
-        'num_training_iterations': 1000,
+        'num_training_iterations': 500,
         'num_eval_mdp_reps': 1,
         'n': 1000,
         'num_states': num_states,
@@ -132,7 +132,7 @@ def train_and_save_k_of_n(*methods):
     all_update_ops = [m.update_op for m in methods]
     all_n_evs_ops = [tf.squeeze(m.evs_op) for m in methods]
     all_max_iteration_placeholders = {
-        m.max_num_training_pe_iterations: 10
+        m.max_num_training_pe_iterations: 30
         for m in methods
     }
 
