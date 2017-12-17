@@ -1,9 +1,9 @@
 import tensorflow as tf
 import numpy as np
 from amii_tf_nn.projection import l1_projection_to_simplex
-from amii_tf_mdp.regret_table import RegretTable, \
+from k_of_n_mdp_policy_opt.regret_table import RegretTable, \
     PrRegretMatchingPlus, PrRegretTable
-from amii_tf_mdp.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
+from k_of_n_mdp_policy_opt.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
     pr_mdp_optimal_policy_and_value
 
 

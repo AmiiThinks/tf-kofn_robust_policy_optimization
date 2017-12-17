@@ -3,14 +3,14 @@ import tensorflow as tf
 import os
 import math
 import numpy as np
-from amii_tf_mdp.robust.k_of_n import k_of_n_mdp_weights
-from amii_tf_mdp.discounted_mdp import generalized_policy_iteration_op, \
+from k_of_n_mdp_policy_opt.robust.k_of_n import k_of_n_mdp_weights
+from k_of_n_mdp_policy_opt.discounted_mdp import generalized_policy_iteration_op, \
     inst_regrets_op, associated_ops, value_ops
-from amii_tf_mdp.utils.timer import Timer
-from amii_tf_mdp.utils.quadrature import midpoint_quadrature
-from amii_tf_mdp.utils.experiment import PickleExperiment
-from amii_tf_mdp.utils.random import reset_random_state
-from amii_tf_mdp.utils.tensor import row_normalize_op
+from k_of_n_mdp_policy_opt.utils.timer import Timer
+from k_of_n_mdp_policy_opt.utils.quadrature import midpoint_quadrature
+from k_of_n_mdp_policy_opt.utils.experiment import PickleExperiment
+from k_of_n_mdp_policy_opt.utils.random import reset_random_state
+from k_of_n_mdp_policy_opt.utils.tensor import row_normalize_op
 
 random_seed = 10
 eval_random_seed = 42

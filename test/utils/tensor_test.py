@@ -1,5 +1,5 @@
 import tensorflow as tf
-import amii_tf_mdp.utils.tensor as patient
+import k_of_n_mdp_policy_opt.utils.tensor as patient
 
 
 class TensorUtilsTest(tf.test.TestCase):

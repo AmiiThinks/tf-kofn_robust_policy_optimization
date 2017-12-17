@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 import tensorflow as tf
 import os
-import math
 import numpy as np
-from amii_tf_mdp.robust.k_of_n import DeterministicKofnConfig
-from amii_tf_mdp.discounted_mdp import generalized_policy_iteration_op, \
+from k_of_n_mdp_policy_opt.robust.k_of_n import DeterministicKofnConfig
+from k_of_n_mdp_policy_opt.discounted_mdp import generalized_policy_iteration_op, \
     associated_ops, value_ops, \
     state_successor_policy_evaluation_op
-from amii_tf_mdp.utils.timer import Timer
-from amii_tf_mdp.utils.quadrature import midpoint_quadrature
-from amii_tf_mdp.utils.experiment import PickleExperiment
-from amii_tf_mdp.utils.random import reset_random_state
-from amii_tf_mdp.robust.uncertain_reward_discounted_continuing_kofn import \
+from k_of_n_mdp_policy_opt.utils.timer import Timer
+from k_of_n_mdp_policy_opt.utils.quadrature import midpoint_quadrature
+from k_of_n_mdp_policy_opt.utils.experiment import PickleExperiment
+from k_of_n_mdp_policy_opt.utils.random import reset_random_state
+from k_of_n_mdp_policy_opt.robust.uncertain_reward_discounted_continuing_kofn import \
     UncertainRewardDiscountedContinuingKofn
-from amii_tf_mdp.environments.gridworld import Gridworld
+from k_of_n_mdp_policy_opt.environments.gridworld import Gridworld
+from k_of_n_mdp_policy_opt.utils.sampling import sample
+
 
 setup_timer = Timer('Setup')
 with setup_timer:
@@ -34,30 +35,40 @@ with setup_timer:
     num_actions = gridworld.num_cardinal_directions()
     num_states = num_rows * num_columns
     gamma = 0.9
+    source = (num_rows - 1, num_columns - 1)
+    goal = (0, num_columns - 1)
+    goal_reward = 0.1
+
+    uncertainty_std = 0.1
+    unknown_reward_positions = [(1, c) for c in range(1, num_columns)]
+    unknown_reward_means = [0.0 for _ in range(1, num_columns)]
 
     final_data = {
-        'num_training_iterations': 500,
+        'num_training_iterations': 100,
         'num_eval_mdp_reps': 1,
         'n': 1000,
+        'num_rows': num_rows,
+        'num_columns': num_columns,
         'num_states': num_states,
         'num_actions': num_actions,
         'discount_factor': gamma,
+        'source': source,
+        'goal': goal,
+        'goal_reward': goal_reward,
+        'unknown_reward_positions': unknown_reward_positions,
+        'uncertainty_std': uncertainty_std,
         'methods': {}
     }
     num_sampled_mdps = final_data['n']
 
     root_op = tf.cast(
-        gridworld.indicator_state_op(num_rows - 1, num_columns - 1),
+        gridworld.indicator_state_op(*source),
         tf.float32
     )
-    goal = (0, num_columns - 1)
     P = tf.reshape(
         gridworld.cardinal_transition_model_op(sink=goal),
         (num_states * num_actions, num_states)
     )
-
-    unknown_reward_positions = [(1, c) for c in range(1, num_columns)]
-    unknown_reward_means = [0.0 for _ in range(1, num_columns)]
 
     known_rewards_op = (
         gridworld.cardinal_reward_model_op(
@@ -66,7 +77,7 @@ with setup_timer:
             sink=goal
         ) + gridworld.cardinal_reward_model_op(
             [goal],
-            [0.1],
+            [goal_reward],
             sink=goal
         )
     )
@@ -77,7 +88,7 @@ with setup_timer:
             known_rewards_op + gridworld.cardinal_reward_model_op(
                 unknown_reward_positions,
                 [
-                    tf.random_normal(stddev=0.1, shape=[])
+                    tf.random_normal(stddev=uncertainty_std, shape=[])
                     for _ in unknown_reward_positions
                 ],
                 sink=goal
@@ -101,17 +112,14 @@ with method_setup_timer:
 method_setup_timer.log_duration_s()
 
 
-def eval_policy(evs):
+def eval_policy(evs, num_eval_mdp_reps):
     reset_random_state(eval_random_seed)
     eval_timer = Timer('Evaluation')
-    evaluation_evs = []
     evs = tf.squeeze(evs)
     with eval_timer:
-        for i in range(final_data['num_eval_mdp_reps']):
-            evaluation_evs.append(sess.run(evs))
-        evaluation_evs = np.array(evaluation_evs)
+        evaluation_evs = sample(evs, num_eval_mdp_reps)
         evaluation_evs = evaluation_evs.reshape(
-            [final_data['num_eval_mdp_reps'] * num_sampled_mdps])
+            [num_eval_mdp_reps * num_sampled_mdps])
         evaluation_evs.sort()
         area = midpoint_quadrature(evaluation_evs, (0, 100))
     if len(evaluation_evs) > 0:
@@ -133,7 +141,7 @@ def train_and_save_k_of_n(*methods):
     all_update_ops = [m.update_op for m in methods]
     all_n_evs_ops = [tf.squeeze(m.evs_op) for m in methods]
     all_max_iteration_placeholders = {
-        m.max_num_training_pe_iterations: 30
+        m.max_num_training_pe_iterations: 1
         for m in methods
     }
 
@@ -160,10 +168,8 @@ def train_and_save_k_of_n(*methods):
                         methods[i].name(), my_n_evs.min(), my_n_evs.max(),
                         gadget_evs[i]))
                 print('')
-            # for k in all_max_iteration_placeholders.keys():
-            #     all_max_iteration_placeholders[k] = int(
-            #         math.ceil((t + 1) / 50.0) * 10
-            #     )
+            for k in all_max_iteration_placeholders.keys():
+                all_max_iteration_placeholders[k] = min(t + 1, 50)
             sess.run(all_update_ops, feed_dict=all_max_iteration_placeholders)
     print('')
     regret_update_timer.log_duration_s()
@@ -182,12 +188,8 @@ def train_and_save_k_of_n(*methods):
     reset_random_state(eval_random_seed)
     eval_timer = Timer('Evaluation')
 
-    evaluation_evs = []
     with eval_timer:
-        for i in range(final_data['num_eval_mdp_reps']):
-            all_n_evs = sess.run(all_n_evs_ops)
-            evaluation_evs.append(all_n_evs)
-        evaluation_evs = np.array(evaluation_evs)
+        evaluation_evs = sample(all_n_evs, final_data['num_eval_mdp_reps'])
         evaluation_evs = np.moveaxis(evaluation_evs, 1, -1).reshape(
             [final_data['num_eval_mdp_reps'] * num_sampled_mdps,
              len(methods)])
@@ -248,7 +250,7 @@ def eval_baseline(root_op,
         normalize_policy=False,
         max_num_iterations=int(1e3))
 
-    evaluation_evs, evaluation_duration_s, area = eval_policy(baseline_evs_op)
+    evaluation_evs, evaluation_duration_s, area = eval_policy(baseline_evs_op, final_data['num_eval_mdp_reps'])
 
     training_action_values_op, _, training_ev_op = value_ops(
         Pi, root_op, transition_model_op, known_rewards_op, gamma=gamma)

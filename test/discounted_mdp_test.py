@@ -1,14 +1,14 @@
 import tensorflow as tf
-from amii_tf_mdp.discounted_mdp import root_value_op, \
+from k_of_n_mdp_policy_opt.discounted_mdp import root_value_op, \
     state_action_successor_policy_evaluation_op, \
     primal_action_value_policy_evaluation_op, \
     dual_action_value_policy_evaluation_op, \
     regret_matching_op, \
     generalized_policy_iteration_op, \
     state_successor_policy_evaluation_op
-from amii_tf_mdp.utils.tensor import row_normalize_op, \
+from k_of_n_mdp_policy_opt.utils.tensor import row_normalize_op, \
     matrix_to_block_matrix_op
-from amii_tf_mdp.utils.random import reset_random_state
+from k_of_n_mdp_policy_opt.utils.random import reset_random_state
 
 
 class DiscountedMdpTest(tf.test.TestCase):

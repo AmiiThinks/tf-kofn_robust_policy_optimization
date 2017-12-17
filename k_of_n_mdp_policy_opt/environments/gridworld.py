@@ -165,9 +165,11 @@ class Gridworld(object):
             uncertainty=None,
             ax=None
         ):
+            num_rows = row_column_policy.shape[0]
+            num_columns = row_column_policy.shape[1]
+
             grid_img = Gridworld.Painter.Tiles.grid_rgb_img(
-                row_column_policy.shape[0],
-                row_column_policy.shape[1]
+                num_rows, num_columns
             )
 
             plt.rc('grid', linestyle='-', color=Gridworld.Painter.Tiles.GRID_GREY)
@@ -197,7 +199,8 @@ class Gridworld(object):
 
             for patch in Gridworld.Painter.PolicyWeights.policy_patches(
                 row_column_policy,
-                sink=(0, row_column_policy.shape[1] - 1)
+                sink=(0, row_column_policy.shape[1] - 1),
+                threshold=threshold
             ):
                 ax.add_patch(patch)
 

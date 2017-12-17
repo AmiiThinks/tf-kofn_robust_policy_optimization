@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='amii_tf_mdp',
+    name='k_of_n_mdp_policy_opt',
     version='0.0.1',
     license='',
     packages=find_packages(),

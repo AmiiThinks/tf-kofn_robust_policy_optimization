@@ -1,6 +1,6 @@
 import tensorflow as tf
-import amii_tf_mdp.robust.k_of_n as patient
-from amii_tf_mdp.pr_mdp import pr_mdp_rollout, pr_mdp_evs
+import k_of_n_mdp_policy_opt.robust.k_of_n as patient
+from k_of_n_mdp_policy_opt.pr_mdp import pr_mdp_rollout, pr_mdp_evs
 
 
 class KOfNTest(tf.test.TestCase):

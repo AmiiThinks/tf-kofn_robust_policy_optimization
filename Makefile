@@ -1,7 +1,7 @@
 PIP :=pip
 PYTHON :=python
-NAME :=amii-tf-mdp
-LIB_NAME :=amii_tf_mdp
+NAME :=k_of_n_mdp_policy_opt
+LIB_NAME :=k_of_n_mdp_policy_opt
 
 .PHONY: default
 default: install
@@ -20,6 +20,8 @@ install: requirements.txt
 
 .PHONY: clean
 clean:
+	-find . -name ".coverage" -delete
+	-find . -name ".DS_Store" -delete
 	-find . -name "*.pyc" -delete
 	-find . -name "__pycache__" -delete
 	-find $(LIB_NAME) -name "*.so" -delete

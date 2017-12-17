@@ -1,5 +1,5 @@
 import tensorflow as tf
-from amii_tf_mdp.environments.gridworld import Gridworld
+from k_of_n_mdp_policy_opt.environments.gridworld import Gridworld
 
 
 class GridworldTest(tf.test.TestCase):

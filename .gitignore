@@ -102,3 +102,4 @@ ENV/
 
 .git
 tmp/
+.DS_Store

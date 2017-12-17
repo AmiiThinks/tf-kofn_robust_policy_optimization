@@ -1,5 +1,5 @@
 import tensorflow as tf
-from amii_tf_mdp.utils.tf_node import UnboundTfNode, BoundTfNode, \
+from k_of_n_mdp_policy_opt.utils.tf_node import UnboundTfNode, BoundTfNode, \
     matching_key_with_different_value
 
 

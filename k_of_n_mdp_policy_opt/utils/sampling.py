@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 
 def weighted_random_shuffle(weights, k=None):
@@ -29,3 +30,7 @@ def ind_set(i, n, value=1.0):
         ),
         shape=(n,)
     )
+
+
+def sample(sess, node, num_reps=1):
+    return np.array([sess.run(node) for _ in range(num_reps)])

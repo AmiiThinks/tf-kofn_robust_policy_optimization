@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from amii_tf_mdp.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
+from k_of_n_mdp_policy_opt.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
     pr_mdp_optimal_policy_and_value
-from amii_tf_mdp.utils.sequence import num_pr_sequences
+from k_of_n_mdp_policy_opt.utils.sequence import num_pr_sequences
 from amii_tf_nn.projection import l1_projection_to_simplex
 
 
