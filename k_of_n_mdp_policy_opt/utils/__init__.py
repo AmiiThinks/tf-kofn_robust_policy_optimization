@@ -5,6 +5,8 @@ from .sampling import *
 from .sequence import *
 from .random import *
 from .experiment import *
+from .quadrature import *
+from .tensor import *
 
 
 def save_pkl(data, path):
