@@ -1,7 +1,5 @@
 import tensorflow as tf
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
 
 class Gridworld(object):
@@ -14,7 +12,8 @@ class Gridworld(object):
         return [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
     @staticmethod
-    def num_cardinal_directions(): return 4
+    def num_cardinal_directions():
+        return 4
 
     class Painter(object):
         MIN_ALPHA = 0.1
@@ -37,13 +36,11 @@ class Gridworld(object):
             SOURCE_ORANGE = [1.0, 130 / 255.0, 0.0]
 
             @classmethod
-            def grid_rgb_img(
-                cls,
-                num_rows,
-                num_columns,
-                source=(-2, -2),
-                goal=(1, -2)
-            ):
+            def grid_rgb_img(cls,
+                             num_rows,
+                             num_columns,
+                             source=(-2, -2),
+                             goal=(1, -2)):
                 grid = np.ones([num_rows + 2, num_columns + 2, 3])
                 grid[:, 0] = cls.WALL_GREY
                 grid[:, -1] = cls.WALL_GREY
@@ -56,90 +53,71 @@ class Gridworld(object):
 
         class PolicyWeights(object):
             NORTH_OFFSET = np.array(
-                [(-0.5, -0.5), (0, -0.5 - 0.5/3), (0.5, -0.5)]
-            )
-            EAST_OFFSET = np.array([(0.5, -0.5), (0.5 + 0.5/3, 0), (0.5, 0.5)])
+                [(-0.5, -0.5), (0, -0.5 - 0.5 / 3), (0.5, -0.5)]
+            )  # yapf:disable
+            EAST_OFFSET = np.array(
+                [(0.5, -0.5), (0.5 + 0.5 / 3, 0), (0.5, 0.5)])  # yapf:disable
             SOUTH_OFFSET = np.array(
-                [(-0.5, 0.5), (0, 0.5 + 0.5/3), (0.5, 0.5)]
-            )
+                [(-0.5, 0.5), (0, 0.5 + 0.5 / 3), (0.5, 0.5)]
+            )  # yapf:disable
             WEST_OFFSET = np.array(
-                [(-0.5, -0.5), (-0.5 - 0.5/3, 0), (-0.5, 0.5)]
-            )
+                [(-0.5, -0.5), (-0.5 - 0.5 / 3, 0), (-0.5, 0.5)]
+            )  # yapf:disable
             DIRECTION_OFFSETS = [
                 NORTH_OFFSET, EAST_OFFSET, SOUTH_OFFSET, WEST_OFFSET
-            ]
+            ]  # yapf:disable
 
             @classmethod
-            def policy_patches(
-                cls,
-                row_column_policy,
-                color='black',
-                sink=None,
-                threshold=1e-15
-            ):
+            def policy_patches(cls,
+                               row_column_policy,
+                               mpl,
+                               color='black',
+                               sink=None,
+                               threshold=1e-15):
                 patches = []
                 for (row, column, direction), weight in np.ndenumerate(
                     row_column_policy
-                ):
-                    if (
-                        (
-                            sink is None or
-                            sink[0] != row or
-                            sink[1] != column
-                        ) and
-                        weight > threshold
-                    ):
+                ):  # yapf:disable
+                    if ((sink is None or sink[0] != row or sink[1] != column)
+                            and weight > threshold):
                         pos = np.array((column, row)) + 1
                         patches.append(
                             mpl.patches.Polygon(
-                                pos +
-                                cls.DIRECTION_OFFSETS[direction],
+                                pos + cls.DIRECTION_OFFSETS[direction],
                                 closed=True,
                                 alpha=Gridworld.Painter.weight_to_alpha(
                                     weight),
-                                facecolor=color
-                            )
-                        )
+                                facecolor=color))
                 return patches
 
         @staticmethod
-        def add_top_left_corner_label(
-            row,
-            column,
-            label,
-            plt=plt,
-            fontsize=7
-        ):
+        def add_top_left_corner_label(row, column, label, plt, fontsize=7):
             return plt.text(
                 column - 0.4,
                 row - 0.4,
                 label,
                 ha='left',
                 va='top',
-                fontsize=fontsize
-            )
+                fontsize=fontsize)
 
         @staticmethod
-        def add_center_label(row, column, label, plt=plt, fontsize=5):
+        def add_center_label(row, column, label, plt, fontsize=5):
             return plt.text(
                 column,
                 row,
                 label,
                 ha='center',
                 va='center',
-                fontsize=fontsize
-            )
+                fontsize=fontsize)
 
         @classmethod
-        def distribution_overlay_patches(
-            cls,
-            discounted_row_column_distribution,
-            threshold=1e-15
-        ):
+        def distribution_overlay_patches(cls,
+                                         discounted_row_column_distribution,
+                                         mpl,
+                                         threshold=1e-15):
             patches = []
             for (row, column), weight in np.ndenumerate(
-                discounted_row_column_distribution
-            ):
+                    discounted_row_column_distribution):
                 if weight > threshold:
                     pos = np.array((column, row)) + 1
                     patches.append(
@@ -149,30 +127,27 @@ class Gridworld(object):
                             height=2.0 / 3,
                             fill=True,
                             facecolor=cls.Tiles.AGENT_BLUE,
-                            alpha=cls.weight_to_alpha(weight)
-                        )
-                    )
+                            alpha=cls.weight_to_alpha(weight)))
             return patches
 
         @staticmethod
-        def draw(
-            row_column_policy,
-            discounted_row_column_distribution=None,
-            plt=plt,
-            threshold=1e-15,
-            source=None,
-            goal=None,
-            uncertainty=None,
-            ax=None
-        ):
+        def draw(row_column_policy,
+                 mpl,
+                 plt,
+                 discounted_row_column_distribution=None,
+                 threshold=1e-15,
+                 source=None,
+                 goal=None,
+                 uncertainty=None,
+                 ax=None):
             num_rows = row_column_policy.shape[0]
             num_columns = row_column_policy.shape[1]
 
             grid_img = Gridworld.Painter.Tiles.grid_rgb_img(
-                num_rows, num_columns
-            )
+                num_rows, num_columns)
 
-            plt.rc('grid', linestyle='-', color=Gridworld.Painter.Tiles.GRID_GREY)
+            plt.rc(
+                'grid', linestyle='-', color=Gridworld.Painter.Tiles.GRID_GREY)
             if ax is None:
                 fig = plt.figure()
                 ax = fig.add_subplot(111)
@@ -192,30 +167,25 @@ class Gridworld(object):
             plt.imshow(grid_img)
 
             for patch in Gridworld.Painter.distribution_overlay_patches(
-                discounted_row_column_distribution,
-                threshold=threshold
-            ):
+                    discounted_row_column_distribution, threshold=threshold):
                 ax.add_patch(patch)
 
             for patch in Gridworld.Painter.PolicyWeights.policy_patches(
-                row_column_policy,
-                sink=(0, row_column_policy.shape[1] - 1),
-                threshold=threshold
-            ):
+                    row_column_policy,
+                    mpl,
+                    sink=(0, row_column_policy.shape[1] - 1),
+                    threshold=threshold):
                 ax.add_patch(patch)
 
             if source is not None:
                 Gridworld.Painter.add_top_left_corner_label(
-                    source[0] + 1,
-                    source[1] + 1,
-                    r'$S$'
-                )
+                    source[0] + 1, source[1] + 1, r'$S$')
 
             if goal is not None:
                 Gridworld.Painter.add_top_left_corner_label(
                     goal[0] + 1, goal[1] + 1, r'$G$')
-                Gridworld.Painter.add_center_label(
-                    goal[0] + 1, goal[1] + 1, '{}'.format(goal[2]))
+                Gridworld.Painter.add_center_label(goal[0] + 1, goal[1] + 1,
+                                                   '{}'.format(goal[2]))
 
             if uncertainty is not None:
                 for r, c, label in uncertainty:
@@ -230,12 +200,8 @@ class Gridworld(object):
     def indicator_state_op(self, *state):
         return tf.reshape(
             tf.scatter_nd(
-                [state],
-                [1],
-                shape=(self.num_rows, self.num_columns)
-            ),
-            [self.num_rows * self.num_columns, 1]
-        )
+                [state], [1], shape=(self.num_rows, self.num_columns)),
+            [self.num_rows * self.num_columns, 1])
 
     def cardinal_transition_model_op(self, sink=None):
         if sink not in self._cardinal_transition_model_ops:
@@ -251,16 +217,13 @@ class Gridworld(object):
                         self.num_rows * self.num_columns
                     ]
                 ),
-                [1, 0, 2]
-            )
+                [1, 0, 2])  # yapf:disable
         return self._cardinal_transition_model_ops[sink]
 
-    def cardinal_reward_model_op(
-        self,
-        row_column_indices,
-        destination_rewards,
-        sink=None
-    ):
+    def cardinal_reward_model_op(self,
+                                 row_column_indices,
+                                 destination_rewards,
+                                 sink=None):
         state_action_state_model_op = self.cardinal_transition_model_op(sink)
         state_actions_to_state_model_op = tf.reshape(
             state_action_state_model_op,
@@ -272,7 +235,7 @@ class Gridworld(object):
                 ),
                 self.num_rows * self.num_columns
             )
-        )
+        )  # yapf:disable
         state_rewards_op = tf.reshape(
             tf.scatter_nd(
                 row_column_indices,
@@ -280,9 +243,9 @@ class Gridworld(object):
                 shape=(self.num_rows, self.num_columns)
             ),
             (self.num_rows * self.num_columns, 1)
-        )
-        state_action_rewards_op = tf.matmul(
-            state_actions_to_state_model_op, state_rewards_op)
+        )  # yapf:disable
+        state_action_rewards_op = tf.matmul(state_actions_to_state_model_op,
+                                            state_rewards_op)
         if sink is not None:
             temp = tf.reshape(
                 state_action_rewards_op,
@@ -291,7 +254,7 @@ class Gridworld(object):
                     self.num_columns,
                     self.num_cardinal_directions()
                 ]
-            )
+            )  # yapf:disable
             state_action_rewards_op = tf.reshape(
                 temp - tf.scatter_nd(
                     [
@@ -307,99 +270,84 @@ class Gridworld(object):
                     self.num_cardinal_directions(),
                     1
                 ]
-            )
+            )  # yapf:disable
         return state_action_rewards_op
 
     def _cardinal_grid_transition_model_op(self, sink=None):
         indices = []
         movement = tf.constant(
-            self.__class__.cardinal_direction_transformations()
-        )
+            self.__class__.cardinal_direction_transformations())
         row_movement = movement[:, 0]
         column_movement = movement[:, 1]
         num_actions = row_movement.shape[0].value
         for row in range(self.num_rows):
             for column in range(self.num_columns):
-                if (
-                    sink is not None and
-                    sink[0] == row and
-                    sink[1] == column
-                ):
+                if (sink is not None and sink[0] == row and sink[1] == column):
                     successors = [
                         tf.constant(row, shape=[num_actions]),
                         tf.constant(column, shape=[num_actions]),
                         tf.range(num_actions),
                         tf.constant(sink[0], shape=[num_actions]),
                         tf.constant(sink[1], shape=[num_actions])
-                    ]
+                    ]  # yapf:disable
                 else:
                     successors = [
                         tf.constant(row, shape=[num_actions]),
                         tf.constant(column, shape=[num_actions]),
                         tf.range(num_actions),
-                        tf.minimum(
-                            self.num_rows - 1,
-                            tf.maximum(0, row + row_movement)
-                        ),
-                        tf.minimum(
-                            self.num_columns - 1,
-                            tf.maximum(0, column + column_movement)
-                        )
+                        tf.minimum(self.num_rows - 1,
+                                   tf.maximum(0, row + row_movement)),
+                        tf.minimum(self.num_columns - 1,
+                                   tf.maximum(0, column + column_movement))
                     ]
                 indices.append(tf.stack(successors, axis=1))
-        intuitive_shape = (
-            self.num_rows,
-            self.num_columns,
-            num_actions,
-            self.num_rows,
-            self.num_columns
-        )
+        intuitive_shape = (self.num_rows, self.num_columns, num_actions,
+                           self.num_rows, self.num_columns)
         indices = tf.reshape(
             tf.stack(indices, axis=0),
-            [len(indices) * num_actions, len(intuitive_shape)]
-        )
+            [len(indices) * num_actions, len(intuitive_shape)])  # yapf:disable
         return tf.scatter_nd(
-            indices,
-            tf.ones([indices.shape[0]]),
-            shape=intuitive_shape
-        )
+            indices, tf.ones([indices.shape[0]]), shape=intuitive_shape)
 
 
 if __name__ == '__main__':
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+
     num_rows = 3
     num_columns = 10
 
     k_200_policy = np.array(
-      [[ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.        ,  1.        ,  0.        ,  0.        ],
-       [ 0.25      ,  0.25      ,  0.25      ,  0.25      ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 1.        ,  0.        ,  0.        ,  0.        ],
-       [ 0.74676859,  0.        ,  0.        ,  0.25323141],
-       [ 0.53854144,  0.        ,  0.        ,  0.46145853],
-       [ 0.3968643 ,  0.        ,  0.        ,  0.6031357 ],
-       [ 0.35593784,  0.        ,  0.        ,  0.64406216],
-       [ 0.32623151,  0.        ,  0.        ,  0.67376852],
-       [ 0.23172346,  0.        ,  0.        ,  0.76827651],
-       [ 0.24368413,  0.        ,  0.        ,  0.75631583],
-       [ 0.15257818,  0.        ,  0.        ,  0.84742177]])
+        [[0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.        ,  1.        ,  0.        ,  0.        ],
+         [0.25      ,  0.25      ,  0.25      ,  0.25      ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [1.        ,  0.        ,  0.        ,  0.        ],
+         [0.74676859,  0.        ,  0.        ,  0.25323141],
+         [0.53854144,  0.        ,  0.        ,  0.46145853],
+         [0.3968643 ,  0.        ,  0.        ,  0.6031357 ],
+         [0.35593784,  0.        ,  0.        ,  0.64406216],
+         [0.32623151,  0.        ,  0.        ,  0.67376852],
+         [0.23172346,  0.        ,  0.        ,  0.76827651],
+         [0.24368413,  0.        ,  0.        ,  0.75631583],
+         [0.15257818,  0.        ,  0.        ,  0.84742177]])  # yapf:disable
     row_column_policy = k_200_policy.reshape([num_rows, num_columns, 4])
 
     uncertainty = []
@@ -410,50 +358,50 @@ if __name__ == '__main__':
     ax = fig.add_subplot(121)
     Gridworld.Painter.draw(
         row_column_policy,
-        np.array([[  1.40720793e-17,   5.25108597e-04,   2.19317898e-03,
-          4.96153440e-03,   8.52138456e-03,   1.39449192e-02,
-          2.20358949e-02,   2.95764264e-02,   4.16728668e-02,
-          4.98644024e-01],
-       [  1.40720793e-17,   5.83454152e-04,   1.91175693e-03,
-          3.31963645e-03,   4.50667180e-03,   6.97296951e-03,
-          1.05394088e-02,   1.08268056e-02,   1.67267621e-02,
-          1.37320356e-02],
-       [  1.40720793e-17,   6.48282294e-04,   2.84448825e-03,
-          6.84902770e-03,   1.26174437e-02,   2.17671245e-02,
-          3.58961523e-02,   5.19143939e-02,   7.62679577e-02,
-          1.00000001e-01]]),
+        mpl,
+        plt,
+        discounted_row_column_distribution=np.array([[
+            1.40720793e-17, 5.25108597e-04, 2.19317898e-03, 4.96153440e-03,
+            8.52138456e-03, 1.39449192e-02, 2.20358949e-02, 2.95764264e-02,
+            4.16728668e-02, 4.98644024e-01
+        ], [
+            1.40720793e-17, 5.83454152e-04, 1.91175693e-03, 3.31963645e-03,
+            4.50667180e-03, 6.97296951e-03, 1.05394088e-02, 1.08268056e-02,
+            1.67267621e-02, 1.37320356e-02
+        ], [
+            1.40720793e-17, 6.48282294e-04, 2.84448825e-03, 6.84902770e-03,
+            1.26174437e-02, 2.17671245e-02, 3.58961523e-02, 5.19143939e-02,
+            7.62679577e-02, 1.00000001e-01
+        ]]),
         threshold=1e-10,
-        source=(
-            row_column_policy.shape[0] - 1,
-            row_column_policy.shape[1] - 1
-        ),
+        source=(row_column_policy.shape[0] - 1,
+                row_column_policy.shape[1] - 1),
         goal=(0, row_column_policy.shape[1] - 1, 0.1),
         uncertainty=uncertainty,
-        ax=ax
-    )
+        ax=ax)
     ax = fig.add_subplot(122)
     Gridworld.Painter.draw(
         row_column_policy,
-        np.array([[  1.40720793e-17,   5.25108597e-04,   2.19317898e-03,
-          4.96153440e-03,   8.52138456e-03,   1.39449192e-02,
-          2.20358949e-02,   2.95764264e-02,   4.16728668e-02,
-          4.98644024e-01],
-       [  1.40720793e-17,   5.83454152e-04,   1.91175693e-03,
-          3.31963645e-03,   4.50667180e-03,   6.97296951e-03,
-          1.05394088e-02,   1.08268056e-02,   1.67267621e-02,
-          1.37320356e-02],
-       [  1.40720793e-17,   6.48282294e-04,   2.84448825e-03,
-          6.84902770e-03,   1.26174437e-02,   2.17671245e-02,
-          3.58961523e-02,   5.19143939e-02,   7.62679577e-02,
-          1.00000001e-01]]),
+        mpl,
+        plt,
+        discounted_row_column_distribution=np.array([[
+            1.40720793e-17, 5.25108597e-04, 2.19317898e-03, 4.96153440e-03,
+            8.52138456e-03, 1.39449192e-02, 2.20358949e-02, 2.95764264e-02,
+            4.16728668e-02, 4.98644024e-01
+        ], [
+            1.40720793e-17, 5.83454152e-04, 1.91175693e-03, 3.31963645e-03,
+            4.50667180e-03, 6.97296951e-03, 1.05394088e-02, 1.08268056e-02,
+            1.67267621e-02, 1.37320356e-02
+        ], [
+            1.40720793e-17, 6.48282294e-04, 2.84448825e-03, 6.84902770e-03,
+            1.26174437e-02, 2.17671245e-02, 3.58961523e-02, 5.19143939e-02,
+            7.62679577e-02, 1.00000001e-01
+        ]]),
         threshold=1e-10,
-        source=(
-            row_column_policy.shape[0] - 1,
-            row_column_policy.shape[1] - 1
-        ),
+        source=(row_column_policy.shape[0] - 1,
+                row_column_policy.shape[1] - 1),
         goal=(0, row_column_policy.shape[1] - 1, 0.1),
         uncertainty=uncertainty,
-        ax=ax
-    )
+        ax=ax)
 
     plt.show()
