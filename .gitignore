@@ -103,3 +103,4 @@ ENV/
 .git
 tmp/
 .DS_Store
+.pytest_cache

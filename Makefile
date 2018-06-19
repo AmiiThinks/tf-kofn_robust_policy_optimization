@@ -30,3 +30,18 @@ clean:
 .PHONY: clean-tmp
 clean-tmp:
 	-rm -rf tmp
+
+.PHONY: build
+build: .build
+
+.build: setup.py $(LIB_NAME)/__init__.py
+	$(PYTHON) setup.py sdist bdist_wheel
+	touch $@
+
+.PHONY: release
+release: .build
+	twine upload dist/*
+
+.PHONY: release-test
+release-test: .build
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
