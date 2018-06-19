@@ -7,7 +7,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'setuptools >= 20.2.2',
-        # tensorflow or tensorflow-gpu v1.2
+        # tensorflow or tensorflow-gpu >= v1.8
         'fire',
         'numpy',
         'amii_tf_nn',
