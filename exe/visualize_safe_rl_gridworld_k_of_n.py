@@ -2,16 +2,15 @@
 import matplotlib as mpl
 mpl.use('agg')
 import matplotlib.pyplot as plt
-import tensorflow as tf
 import os
 import math
 import numpy as np
-from k_of_n_mdp_policy_opt.utils.experiment import PickleExperiment
+from k_of_n_mdp_policy_opt.utils import load_pkl
 from k_of_n_mdp_policy_opt.environments.gridworld import Gridworld
 
 
 def plot(experiment, num_plot_columns=4):
-    data = experiment.load('every_k')
+    data = load_pkl(os.path.join(experiment, 'every_k'))
 
     num_rows = data['num_rows']
     num_columns = data['num_columns']
@@ -24,7 +23,7 @@ def plot(experiment, num_plot_columns=4):
     for r, c in data['unknown_reward_positions']:
         uncertainty.append(
             (r, c, r"$\sigma={}$".format(data['uncertainty_std']))
-        )
+        )  # yapf:disable
 
     num_methods = len(data['methods'])
     num_plot_rows = int(math.ceil(num_methods / float(num_plot_columns))) + 1
@@ -34,7 +33,7 @@ def plot(experiment, num_plot_columns=4):
         num_plot_rows,
         num_plot_columns,
         int(math.ceil(num_plot_columns / 2.0))
-    )
+    )  # yapf:disable
     Gridworld.Painter.draw(
         np.array(data['baseline']['Mean']['policy']).reshape(
             [num_rows, num_columns, num_actions]
@@ -46,7 +45,7 @@ def plot(experiment, num_plot_columns=4):
         goal=(goal[0], goal[1], goal_reward),
         uncertainty=uncertainty,
         ax=ax
-    )
+    )  # yapf:disable
 
     i = 0
     for k in sorted(data['methods'].keys(), key=lambda name: int(name[2:])):
@@ -54,7 +53,7 @@ def plot(experiment, num_plot_columns=4):
             num_plot_rows,
             num_plot_columns,
             i + num_plot_columns + 1
-        )
+        )  # yapf:disable
         Gridworld.Painter.draw(
             np.array(data['methods'][k]['policy']).reshape(
                 [num_rows, num_columns, num_actions]
@@ -66,19 +65,13 @@ def plot(experiment, num_plot_columns=4):
             goal=(goal[0], goal[1], goal_reward),
             uncertainty=uncertainty,
             ax=ax
-        )
+        )  # yapf:disable
         i += 1
     fig.savefig(
         os.path.join(experiment.path(), '{}.pdf'.format(experiment.name)),
         bbox_inches='tight'
-    )
+    )  # yapf:disable
 
 
 if __name__ == '__main__':
-    random_seed = 10
-    experiment = PickleExperiment(
-        'safe_rl_gridworld_k_of_n',
-        root=os.path.join(os.getcwd(), 'tmp'),
-        seed=random_seed,
-        log_level=tf.logging.INFO)
-    plot(experiment)
+    plot(os.path.join(os.getcwd(), 'tmp', 'safe_rl_gridworld_k_of_n'))

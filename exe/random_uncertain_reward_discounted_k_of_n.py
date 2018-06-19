@@ -7,20 +7,17 @@ from k_of_n_mdp_policy_opt.robust.k_of_n import k_of_n_mdp_weights
 from k_of_n_mdp_policy_opt.discounted_mdp import generalized_policy_iteration_op, \
     inst_regrets_op, associated_ops, value_ops
 from k_of_n_mdp_policy_opt.utils.timer import Timer
-from k_of_n_mdp_policy_opt.utils.quadrature import midpoint_quadrature
-from k_of_n_mdp_policy_opt.utils.experiment import PickleExperiment
+from k_of_n_mdp_policy_opt.utils import midpoint_quadrature, save_pkl
 from k_of_n_mdp_policy_opt.utils.random import reset_random_state
 from k_of_n_mdp_policy_opt.utils.tensor import row_normalize_op
 
 random_seed = 10
 eval_random_seed = 42
 
-experiment = PickleExperiment(
-    'random_uncertain_reward_discounted_k_of_n',
-    root=os.path.join(os.getcwd(), 'tmp'),
-    seed=random_seed,
-    log_level=tf.logging.INFO)
-experiment.ensure_present()
+experiment_path = os.path.join(os.getcwd(), 'tmp',
+                               'random_uncertain_reward_discounted_k_of_n')
+tf.set_log_level(tf.logging.INFO)
+if not os.path.exists(experiment_path): os.mkdirs(experiment_path)
 
 num_states = int(1e1)
 num_actions = int(5)
@@ -51,8 +48,7 @@ unknown_reward_positions = 1 - known_reward_positions
 
 reward_models_op = tf.squeeze(
     tf.stack(
-        [(tf.random_normal(
-            stddev=1000, shape=[num_states * num_actions, 1]) *
+        [(tf.random_normal(stddev=1000, shape=[num_states * num_actions, 1]) *
           unknown_reward_positions) + known_rewards
          for _ in range(num_sampled_mdps)],
         axis=1))
@@ -186,7 +182,7 @@ def train_and_save_k_of_n(*methods):
     training_checkpoints = []
     all_training_evs = []
 
-    experiment.reset_random_state()
+    reset_random_state(random_seed)
     regret_update_timer = Timer('Regret Update')
     with regret_update_timer:
         for t in range(final_data['num_training_iterations']):
@@ -209,9 +205,7 @@ def train_and_save_k_of_n(*methods):
             for k in all_max_iteration_placeholders.keys():
                 all_max_iteration_placeholders[k] = int(
                     math.ceil(math.log(t + 1) + 2))
-            sess.run(
-                all_update_ops,
-                feed_dict=all_max_iteration_placeholders)
+            sess.run(all_update_ops, feed_dict=all_max_iteration_placeholders)
     print('')
     regret_update_timer.log_duration_s()
     print('')
@@ -325,4 +319,4 @@ with tf.Session(config=config) as sess:
                                           gamma))
         sess.run(tf.global_variables_initializer())
         train_and_save_k_of_n(*k_of_n_methods)
-        experiment.save(final_data, 'every_k')
+        save_pkl(final_data, os.path(experiment_path, 'every_k'))
