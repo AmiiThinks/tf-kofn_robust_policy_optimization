@@ -1,33 +1,7 @@
 import tensorflow as tf
+from .utils import num_states, num_actions
 from .utils.sequence import num_pr_prefixes, \
     prob_next_sequence_state_action_and_next_state
-
-
-def mean_models(*models, n=1):
-    if len(models) < 1:
-        return None, None
-    elif n > 1:
-        model_lists = zip(*models)
-    else:
-        model_lists = [models]
-
-    _mean_models = []
-    for model_list in model_lists:
-        first_model = model_list[0]
-        model_rank = tf.rank(tf.convert_to_tensor(first_model))
-        model_tensor = tf.concat(
-            [tf.expand_dims(model, axis=model_rank) for model in model_list],
-            axis=model_rank)
-        _mean_models.append(tf.reduce_mean(model_tensor, axis=model_rank))
-    return _mean_models
-
-
-def num_actions(transitions):
-    return transitions.shape[1].value
-
-
-def num_states(transitions):
-    return transitions.shape[0].value
 
 
 def pr_mdp_rollout(horizon, root, transitions):

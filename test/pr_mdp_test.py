@@ -3,8 +3,7 @@ import numpy as np
 from k_of_n_mdp_policy_opt.pr_mdp import \
     pr_mdp_rollout, \
     pr_mdp_expected_value, \
-    pr_mdp_optimal_policy_and_value, \
-    mean_models
+    pr_mdp_optimal_policy_and_value
 from k_of_n_mdp_policy_opt.utils.sequence import num_pr_sequences
 from amii_tf_nn.projection import l1_projection_to_simplex
 
@@ -13,17 +12,6 @@ class PrMdpTest(tf.test.TestCase):
     def setUp(self):
         np.random.seed(42)
         tf.set_random_seed(42)
-
-    def test_mean_models(self):
-        a = np.random.normal(size=[3, 2]).astype('float32')
-        b = np.random.normal(size=[3, 2]).astype('float32')
-
-        with self.test_session():
-            self.assertAllClose((a + b) / 2.0, mean_models(a, b)[0])
-
-            patient = mean_models((a, b), (b, 2 * a), n=2)
-            self.assertAllClose((a + b) / 2.0, patient[0])
-            self.assertAllClose((2 * a + b) / 2.0, patient[1])
 
     def test_update(self):
         horizon = 2
