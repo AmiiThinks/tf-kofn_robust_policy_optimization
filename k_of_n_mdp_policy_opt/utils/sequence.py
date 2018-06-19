@@ -12,38 +12,35 @@ def num_pr_sequences(horizon, num_states, num_actions):
             ) / (
                 num_states * num_actions - 1
             )
-        )
+        )  # yapf:disable
 
 
 def num_pr_prefixes(horizon, num_states, num_actions):
-    return int(
-        num_pr_sequences(horizon, num_states, num_actions) / num_states
-    )
+    return int(num_pr_sequences(horizon, num_states, num_actions) / num_states)
 
 
-def num_ir_sequences(horizon, num_states): return horizon * num_states
+def num_ir_sequences(horizon, num_states):
+    return horizon * num_states
 
 
 def num_pr_sequences_at_timestep(t, num_states, num_actions):
     if t < 0:
         return 0
     else:
-        return num_states * (num_states * num_actions) ** t
+        return num_states * (num_states * num_actions)**t
 
 
 def static_size(tensor):
     p = 1
     for i in range(len(tensor.shape)):
-        if tensor.shape[i].value > 0:
+        if tensor.shape[i].value is not None and tensor.shape[i].value > 0:
             p *= tensor.shape[i].value
     return p
 
 
-def prob_sequence_state_and_action(
-    prob_sequence_action_state,
-    strat=None,
-    num_actions=None
-):
+def prob_sequence_state_and_action(prob_sequence_action_state,
+                                   strat=None,
+                                   num_actions=None):
     '''
     Params:
     - prob_sequence_action_state: Tensor with rank > 2 (* by |A| by |S|).
@@ -71,7 +68,7 @@ def prob_sequence_state_and_action(
         ),
         strat=strat,
         num_actions=num_actions
-    )
+    )  # yapf:disable
     return tf.reshape(
         prob_tensor,
         shape=(
@@ -82,14 +79,12 @@ def prob_sequence_state_and_action(
             prob_sequence_action_state.shape[-1].value,
             num_actions
         )
-    )
+    )  # yapf:disable
 
 
-def prob_next_sequence_state_action_and_next_state(
-    transition_model,
-    prob_sequence_action_state,
-    strat=None
-):
+def prob_next_sequence_state_action_and_next_state(transition_model,
+                                                   prob_sequence_action_state,
+                                                   strat=None):
     '''
     Params:
     - transition_model: |S| by |A| by |S| Tensor.
@@ -105,9 +100,7 @@ def prob_next_sequence_state_action_and_next_state(
         strategy `strat`.
     '''
     prob_sequence_state_and_action_ = prob_sequence_state_and_action(
-        prob_sequence_action_state,
-        strat=strat
-    )
+        prob_sequence_action_state, strat=strat)
     prob_state_action_sequence_next_state = (
         tf.transpose(
             tf.expand_dims(transition_model, 3),
@@ -117,9 +110,9 @@ def prob_next_sequence_state_action_and_next_state(
             tf.transpose(prob_sequence_state_and_action_, [1, 2, 0]),
             3
         )
-    )
+    )  # yapf:disable
     prob_sequence_state_action_next_state = tf.transpose(
         prob_state_action_sequence_next_state,
         [2, 0, 1, 3]
-    )
+    )  # yapf:disable
     return prob_sequence_state_action_next_state
