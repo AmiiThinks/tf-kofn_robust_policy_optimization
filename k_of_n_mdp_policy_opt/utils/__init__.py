@@ -4,7 +4,6 @@ from .probability import *
 from .sampling import *
 from .sequence import *
 from .random import *
-from .experiment import *
 from .tensor import *
 
 
