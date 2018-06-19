@@ -5,8 +5,12 @@ from .sampling import *
 from .sequence import *
 from .random import *
 from .experiment import *
-from .quadrature import *
 from .tensor import *
+
+
+def midpoint_quadrature(y, x_bounds):
+    y_mid = (y[:-1] + y[1:]) / 2.0
+    return ((x_bounds[1] - x_bounds[0]) / len(y) * y_mid).sum()
 
 
 def save_pkl(data, path):
