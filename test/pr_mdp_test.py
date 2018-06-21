@@ -1,11 +1,15 @@
 import tensorflow as tf
+try:
+    tf.enable_eager_execution()
+except:
+    pass
 import numpy as np
 from k_of_n_mdp_policy_opt.pr_mdp import \
     pr_mdp_rollout, \
     pr_mdp_expected_value, \
     pr_mdp_optimal_policy_and_value
 from k_of_n_mdp_policy_opt.utils.sequence import num_pr_sequences
-from amii_tf_nn.projection import l1_projection_to_simplex
+from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
 
 
 class PrMdpTest(tf.test.TestCase):
@@ -52,136 +56,131 @@ class PrMdpTest(tf.test.TestCase):
             # TODO Check that the rest of the sequences were updated properly.
 
     def test_expected_value(self):
-        with self.test_session() as sess:
-            horizon = 2
-            num_states = 3
-            num_actions = 2
+        horizon = 2
+        num_states = 3
+        num_actions = 2
 
-            transition_model = tf.transpose(
-                l1_projection_to_simplex(
-                    tf.zeros((num_states, num_actions, num_states))))
-            rewards = np.ones((num_states, num_actions, num_states))
-            root = l1_projection_to_simplex(tf.ones([3]))
-            uniform_random_strat = tf.transpose(
-                l1_projection_to_simplex(
-                    tf.zeros(
-                        (
-                            num_actions,
-                            num_pr_sequences(
-                                horizon - 1,
-                                num_states,
-                                num_actions
-                            )
-                        ))))  # yapf:disable
-            self.assertAlmostEqual(
-                2.0,
-                sess.run(
-                    pr_mdp_expected_value(
-                        horizon,
-                        num_states,
+        transition_model = tf.transpose(
+            l1_projection_to_simplex(
+                tf.zeros((num_states, num_actions, num_states))))
+        rewards = np.ones((num_states, num_actions, num_states))
+        root = l1_projection_to_simplex(tf.ones([3]))
+        uniform_random_strat = tf.transpose(
+            l1_projection_to_simplex(
+                tf.zeros(
+                    (
                         num_actions,
-                        pr_mdp_rollout(horizon, root, transition_model),
-                        rewards,
-                        uniform_random_strat
-                    )
-                ),
-                places=6)  # yapf:disable
-
-    def test_expected_value_2(self):
-        with self.test_session() as sess:
-            horizon = 2
-            num_states = 3
-            num_actions = 2
-
-            transition_model = tf.transpose(
-                l1_projection_to_simplex(
-                    np.random.normal(
-                        size=(
+                        num_pr_sequences(
+                            horizon - 1,
                             num_states,
-                            num_actions,
-                            num_states
-                        ))))  # yapf:disable
-            rewards = (
-                np.random.normal(
-                    loc=-1.0,
-                    scale=1.0,
-                    size=(num_states, num_actions, num_states)
-                ) *
-                tf.transpose(
-                    l1_projection_to_simplex(
-                        np.random.normal(
-                            size=(
-                                num_states,
-                                num_actions,
-                                num_states
-                            ),
-                            scale=5.0
+                            num_actions
                         )
-                    )
-                )
-            )  # yapf:disable
-            root = l1_projection_to_simplex(tf.ones([3]))
-            uniform_random_strat = tf.transpose(
-                l1_projection_to_simplex(
-                    tf.zeros(
-                        (
-                            num_actions,
-                            num_pr_sequences(
-                                horizon - 1,
-                                num_states,
-                                num_actions
-                            )))))  # yapf:disable
-            ev = pr_mdp_expected_value(
+                    ))))  # yapf:disable
+        self.assertAllClose(
+            2.0,
+            pr_mdp_expected_value(
                 horizon,
                 num_states,
                 num_actions,
                 pr_mdp_rollout(horizon, root, transition_model),
                 rewards,
-                uniform_random_strat)  # yapf:disable
-            self.assertAlmostEqual(-0.75842464, sess.run(ev))
-            self.assertAlmostEqual(-0.75842464, sess.run(ev))
+                uniform_random_strat
+            ))  # yapf:disable
 
-    def test_best_response(self):
-        with self.test_session() as sess:
-            horizon = 2
-            num_states = 3
-            num_actions = 2
+    def test_expected_value_2(self):
+        horizon = 2
+        num_states = 3
+        num_actions = 2
 
-            transition_model = tf.transpose(
+        transition_model = tf.transpose(
+            l1_projection_to_simplex(
+                np.random.normal(
+                    size=(
+                        num_states,
+                        num_actions,
+                        num_states
+                    ))))  # yapf:disable
+        rewards = (
+            np.random.normal(
+                loc=-1.0,
+                scale=1.0,
+                size=(num_states, num_actions, num_states)
+            ) *
+            tf.transpose(
                 l1_projection_to_simplex(
                     np.random.normal(
                         size=(
                             num_states,
                             num_actions,
                             num_states
-                        ))))  # yapf:disable
-            rewards = (
-                np.random.normal(
-                    loc=-1.0,
-                    scale=1.0,
-                    size=(num_states, num_actions, num_states)
-                ) *
-                tf.transpose(
-                    l1_projection_to_simplex(
-                        np.random.normal(
-                            size=(
-                                num_states,
-                                num_actions,
-                                num_states
-                            ),
-                            scale=5.0
-                        )
+                        ),
+                        scale=5.0
                     )
                 )
-            )  # yapf:disable
-            root = l1_projection_to_simplex(tf.ones([3]))
-            br_strat, br_val = pr_mdp_optimal_policy_and_value(
-                horizon,
-                num_states,
-                num_actions,
-                pr_mdp_rollout(horizon, root, transition_model),
-                rewards)  # yapf:disable
-            self.assertAlmostEqual(-0.24534382, sess.run(br_val))
+            )
+        )  # yapf:disable
+        root = l1_projection_to_simplex(tf.ones([3]))
+        uniform_random_strat = tf.transpose(
+            l1_projection_to_simplex(
+                tf.zeros(
+                    (
+                        num_actions,
+                        num_pr_sequences(
+                            horizon - 1,
+                            num_states,
+                            num_actions
+                        )))))  # yapf:disable
+        ev = pr_mdp_expected_value(
+            horizon,
+            num_states,
+            num_actions,
+            pr_mdp_rollout(horizon, root, transition_model),
+            rewards,
+            uniform_random_strat)  # yapf:disable
+        self.assertAllClose(-0.75842464, ev)
+        self.assertAllClose(-0.75842464, ev)
+
+    def test_best_response(self):
+        horizon = 2
+        num_states = 3
+        num_actions = 2
+
+        transition_model = tf.transpose(
+            l1_projection_to_simplex(
+                np.random.normal(
+                    size=(
+                        num_states,
+                        num_actions,
+                        num_states
+                    ))))  # yapf:disable
+        rewards = (
+            np.random.normal(
+                loc=-1.0,
+                scale=1.0,
+                size=(num_states, num_actions, num_states)
+            ) *
+            tf.transpose(
+                l1_projection_to_simplex(
+                    np.random.normal(
+                        size=(
+                            num_states,
+                            num_actions,
+                            num_states
+                        ),
+                        scale=5.0
+                    )
+                )
+            )
+        )  # yapf:disable
+        root = l1_projection_to_simplex(tf.ones([3]))
+        br_strat, br_val = pr_mdp_optimal_policy_and_value(
+            horizon,
+            num_states,
+            num_actions,
+            pr_mdp_rollout(horizon, root, transition_model),
+            rewards)  # yapf:disable
+
+        self.assertAllClose(-0.24534382, br_val)
 
 
 if __name__ == '__main__':

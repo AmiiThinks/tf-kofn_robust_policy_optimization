@@ -1,12 +1,17 @@
 import tensorflow as tf
 from k_of_n_mdp_policy_opt.discounted_mdp import inst_regrets_op, associated_ops, \
     value_ops, state_successor_policy_evaluation_op
-from k_of_n_mdp_policy_opt.utils.tensor import row_normalize_op
+from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
 
 
 class UncertainRewardDiscountedContinuingKofn(object):
-    def __init__(self, config, root_op, transition_model_op, reward_models_op,
-                 gamma, cap_negative_advantages=False):
+    def __init__(self,
+                 config,
+                 root_op,
+                 transition_model_op,
+                 reward_models_op,
+                 gamma,
+                 cap_negative_advantages=False):
         if reward_models_op.shape[1].value != config.num_sampled_mdps():
             print(reward_models_op.shape[1].value)
             print(config.num_sampled_mdps())
@@ -21,12 +26,12 @@ class UncertainRewardDiscountedContinuingKofn(object):
 
         (self.Pi_op, self.action_values_op, self.state_values_op,
          self.evs_op) = associated_ops(
-            self.advantages_op,
-            root_op,
-            transition_model_op,
-            reward_models_op,
-            gamma=gamma,
-            max_num_iterations=int(1e3))
+             self.advantages_op,
+             root_op,
+             transition_model_op,
+             reward_models_op,
+             gamma=gamma,
+             max_num_iterations=int(1e3))
 
         assert (len(self.evs_op.shape) == 2)
         assert (self.evs_op.shape[0].value == reward_models_op.shape[1].value)
@@ -61,14 +66,12 @@ class UncertainRewardDiscountedContinuingKofn(object):
             next_advantages = tf.maximum(0.0, next_advantages)
 
         self.update_op = tf.assign(self.advantages_op, next_advantages)
-
         '''
         Probability of each action given each state.
 
         |States| by |actions| Tensor.
         '''
-        self.policy_op = row_normalize_op(self.advantages_op)
-
+        self.policy_op = l1_projection_to_simplex(self.advantages_op, axis=1)
         '''
         Discounted state successor distribution.
 
@@ -76,19 +79,19 @@ class UncertainRewardDiscountedContinuingKofn(object):
         '''
         self.state_successor_op = state_successor_policy_evaluation_op(
             transition_model_op, self.Pi_op, gamma=gamma)
-
         '''
         Probability of terminating in each state.
 
         |States| by 1 Tensor
         '''
         self.state_distribution_op = tf.matmul(
-            tf.transpose(self.state_successor_op), root_op
-        )
+            tf.transpose(self.state_successor_op), root_op)
 
-    def num_states(self): return self.root_op.shape[0].value
+    def num_states(self):
+        return self.root_op.shape[0].value
 
     def num_actions(self):
         return int(self.transition_model_op.shape[0].value / self.num_states())
 
-    def name(self): return self.config.name()
+    def name(self):
+        return self.config.name()

@@ -1,5 +1,5 @@
 import tensorflow as tf
-from amii_tf_nn.projection import l1_projection_to_simplex
+from ..utils.tensor import l1_projection_to_simplex
 
 
 class InventoryMdpGenerator(object):

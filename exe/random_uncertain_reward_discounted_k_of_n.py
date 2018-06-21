@@ -9,7 +9,7 @@ from k_of_n_mdp_policy_opt.discounted_mdp import generalized_policy_iteration_op
 from k_of_n_mdp_policy_opt.utils.timer import Timer
 from k_of_n_mdp_policy_opt.utils import midpoint_quadrature, save_pkl
 from k_of_n_mdp_policy_opt.utils.random import reset_random_state
-from k_of_n_mdp_policy_opt.utils.tensor import row_normalize_op
+from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
 
 random_seed = 10
 eval_random_seed = 42
@@ -33,9 +33,9 @@ final_data = {
 }
 num_sampled_mdps = len(final_data['n_weights'])
 
-root_op = row_normalize_op(np.random.normal(size=[num_states, 1]))
-P = row_normalize_op(
-    np.random.uniform(size=[num_states * num_actions, num_states]))
+root_op = l1_projection_to_simplex(np.random.normal(size=[num_states, 1]))
+P = l1_projection_to_simplex(
+    np.random.uniform(size=[num_states * num_actions, num_states]), axis=1)
 
 known_reward_positions = np.random.randint(
     0, high=2, size=[num_states * num_actions, 1])

@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from .utils.tensor import block_ones, row_normalize_op, ind_max_op
+from .utils.tensor import block_ones, l1_projection_to_simplex, ind_max_op
 from .utils.tensor import matrix_to_block_matrix_op as \
     policy_block_matrix_op
 
@@ -15,8 +15,7 @@ def state_action_successor_policy_evaluation_op(P,
     num_actions = int(P.shape[0].value / num_states)
     H_0 = tf.constant(
         1.0 / (num_states * num_actions),
-        shape=(num_states * num_actions, num_states * num_actions)
-    )
+        shape=(num_states * num_actions, num_states * num_actions))
 
     def H_dp1_op(H_d):
         return (((1 - gamma) * tf.eye(H_d.shape[0].value)) +
@@ -121,7 +120,7 @@ def regret_matching_op(P,
         return tf.reshape(r_s, shape=[num_states, num_actions])
 
     def update_regrets(s, regrets):
-        Pi = policy_block_matrix_op(row_normalize_op(regrets))
+        Pi = policy_block_matrix_op(l1_projection_to_simplex(regrets, axis=1))
         r_s = inst_regrets_at_s_op(s, Pi)
         return regrets + alpha * (r_s - regrets)
 
@@ -149,7 +148,7 @@ def generalized_policy_iteration_op(P,
         return tf.reshape(
             primal_action_value_policy_evaluation_op(
                 P,
-                policy_block_matrix_op(ind_max_op(q)),
+                policy_block_matrix_op(ind_max_op(q, axis=1)),
                 r,
                 gamma=gamma,
                 threshold=pi_threshold,
@@ -161,7 +160,8 @@ def generalized_policy_iteration_op(P,
             lambda s, _: s < t,
             lambda s, q: [s + 1, q + alpha * (next_q(s, q) - q)],
             [0, tf.zeros([num_states, num_actions])],
-            parallel_iterations=1)[-1])
+            parallel_iterations=1)[-1],
+        axis=1)
 
 
 def root_value_op(mu, v):
@@ -185,7 +185,7 @@ def associated_ops(action_weights,
                    normalize_policy=True,
                    **kwargs):
     if normalize_policy:
-        policy = row_normalize_op(action_weights)
+        policy = l1_projection_to_simplex(action_weights, axis=1)
     else:
         policy = action_weights
     Pi = policy_block_matrix_op(policy)
@@ -203,10 +203,7 @@ def state_successor_policy_evaluation_op(P,
                                          max_num_iterations=-1):
     P = tf.convert_to_tensor(P)
     num_states = P.shape[1].value
-    M_0 = tf.constant(
-        1.0 / num_states,
-        shape=(num_states, num_states)
-    )
+    M_0 = tf.constant(1.0 / num_states, shape=(num_states, num_states))
 
     def M_dp1_op(M_d):
         return (((1 - gamma) * tf.eye(M_d.shape[0].value)) +

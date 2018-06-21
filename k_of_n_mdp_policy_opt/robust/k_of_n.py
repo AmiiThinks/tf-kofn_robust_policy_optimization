@@ -1,5 +1,5 @@
 import tensorflow as tf
-from amii_tf_nn.projection import l1_projection_to_simplex
+from ..utils.tensor import l1_projection_to_simplex
 
 
 def prob_ith_element_is_in_k_subset(n_weights, k_weights):
