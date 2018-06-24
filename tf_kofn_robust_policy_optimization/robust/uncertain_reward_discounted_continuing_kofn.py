@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tf_kofn_robust_policy_optimization.robust.kofn import world_weights
 from tf_kofn_robust_policy_optimization.discounted_mdp import inst_regrets_op, associated_ops, \
     value_ops, state_successor_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
@@ -12,10 +13,10 @@ class UncertainRewardDiscountedContinuingKofn(object):
                  reward_models_op,
                  gamma,
                  cap_negative_advantages=False):
-        if reward_models_op.shape[1].value != config.num_sampled_mdps():
+        if reward_models_op.shape[1].value != config.num_sampled_worlds():
             print(reward_models_op.shape[1].value)
-            print(config.num_sampled_mdps())
-        assert reward_models_op.shape[1].value == config.num_sampled_mdps()
+            print(config.num_sampled_worlds())
+        assert reward_models_op.shape[1].value == config.num_sampled_worlds()
         self.config = config
         self.root_op = root_op
         self.transition_model_op = transition_model_op
@@ -37,10 +38,16 @@ class UncertainRewardDiscountedContinuingKofn(object):
         assert (self.evs_op.shape[0].value == reward_models_op.shape[1].value)
         assert (self.evs_op.shape[1].value == 1)
 
-        self.mdp_weights_op = self.config.mdp_weights_op(self.evs_op)
+        def mdp_weights_op(self, evs_op):
+            return
+
+        self.mdp_weights_op = world_weights(self.config.n_weights,
+                                            self.config.k_weights,
+                                            tf.squeeze(self.evs_op))
+        self.mdp_weights_op = tf.expand_dims(self.mdp_weights_op, axis=1)
 
         self.ev_op = tf.squeeze(
-            tf.transpose(self.evs_op) @ self.mdp_weights_op)
+            tf.matmul(self.evs_op, self.mdp_weights_op, transpose_a=True))
 
         self.max_num_training_pe_iterations = tf.placeholder(tf.int32)
         (self.training_action_values_op, self.training_state_values_op,
@@ -53,8 +60,11 @@ class UncertainRewardDiscountedContinuingKofn(object):
              threshold=1e-8,
              max_num_iterations=self.max_num_training_pe_iterations)
 
-        self.training_mdp_weights_op = self.config.mdp_weights_op(
-            self.training_evs_op)
+        self.training_mdp_weights_op = world_weights(self.config.n_weights,
+                                                     self.config.k_weights,
+                                                     tf.squeeze(self.evs_op))
+        self.training_mdp_weights_op = tf.expand_dims(
+            self.training_evs_op, axis=1)
 
         self.r_s_op = tf.reshape(
             inst_regrets_op(self.training_action_values_op, Pi=self.Pi_op)
@@ -94,4 +104,7 @@ class UncertainRewardDiscountedContinuingKofn(object):
         return int(self.transition_model_op.shape[0].value / self.num_states())
 
     def name(self):
-        return self.config.name()
+        return self.config.label()
+
+    def __str__(self):
+        return self.name()

@@ -2,7 +2,8 @@
 import tensorflow as tf
 import os
 import numpy as np
-from tf_kofn_robust_policy_optimization.robust.kofn import DeterministicKofnConfig
+from tf_kofn_robust_policy_optimization.robust.kofn import \
+    DeterministicKofnGameTemplate
 from tf_kofn_robust_policy_optimization.discounted_mdp import generalized_policy_iteration_op, \
     associated_ops, value_ops, \
     state_successor_policy_evaluation_op
@@ -105,7 +106,7 @@ method_setup_timer = Timer('Setup all k-of-N methods')
 with method_setup_timer:
     kofn_methods = []
     for i in [0] + list(range(99, final_data['n'], 100)):
-        config = DeterministicKofnConfig(i + 1, final_data['n'])
+        config = DeterministicKofnGameTemplate(i + 1, final_data['n'])
         kofn_methods.append(
             UncertainRewardDiscountedContinuingKofn(
                 config, root_op, P, reward_models_op, gamma))

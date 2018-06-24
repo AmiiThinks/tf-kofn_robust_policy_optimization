@@ -70,7 +70,7 @@ def kofn_regret_update(chance_prob_sequence_list, reward_models, weights,
     return regret_update
 
 
-class DeterministicKofnConfig(object):
+class DeterministicKofnGameTemplate(object):
     def __init__(self, k, n):
         self.n_weights = [0.0] * n
         self.n_weights[n - 1] = 1.0
@@ -79,13 +79,52 @@ class DeterministicKofnConfig(object):
         self.k_weights = [0.0] * n
         self.k_weights[k - 1] = 1.0
 
-    def num_sampled_mdps(self):
+        self.prob_ith_element_is_sampled = prob_ith_element_is_sampled(
+            self.n_weights, self.k_weights)
+
+    def num_sampled_worlds(self):
         return len(self.n_weights)
 
-    def mdp_weights_op(self, evs_op):
-        return tf.expand_dims(
-            world_weights(self.n_weights, self.k_weights, tf.squeeze(evs_op)),
+    def label(self):
+        return '{}-of-{}'.format(self.k, self.num_sampled_worlds())
+
+    def __str__(self):
+        return self.label() + ' template'
+
+
+class ContextualKofnGame(object):
+    def __init__(self, mixture_constraint_weights, u, strat):
+        n = mixture_constraint_weights.shape[0].value
+        assert u.shape[0].value == n
+
+        num_contexts = strat.shape[0].value
+        assert u.shape[1].value == num_contexts
+
+        num_actions = strat.shape[1].value
+        assert u.shape[2].value == num_actions
+
+        self.mixture_constraint_weights = mixture_constraint_weights
+        self.u = u
+
+        self.context_evs = tf.reduce_sum(
+            u * tf.tile(tf.expand_dims(strat, axis=0), [n, 1, 1]), axis=2)
+        assert self.context_evs.shape[0].value == n
+        assert self.context_evs.shape[1].value == num_contexts
+
+        self.evs = tf.reduce_mean(self.context_evs, axis=1, keep_dims=True)
+
+        self.k_weights = tf.expand_dims(
+            rank_to_element_weights(self.mixture_constraint_weights,
+                                    tf.squeeze(self.evs)),
             axis=1)
 
-    def name(self):
-        return 'k={}'.format(self.k)
+        self.root_ev = tf.squeeze(
+            tf.matmul(self.evs, self.k_weights, transpose_a=True))
+
+        self.kofn_utility = tf.reduce_sum(
+            u * tf.tile(
+                tf.expand_dims(self.k_weights, axis=2),
+                [1, num_contexts, num_actions]),
+            axis=0)
+        assert self.kofn_utility.shape[0].value == num_contexts
+        assert self.kofn_utility.shape[1].value == num_actions
