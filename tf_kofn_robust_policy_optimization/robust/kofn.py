@@ -46,6 +46,14 @@ def world_weights(n_weights, k_weights, evs):
         prob_ith_element_is_sampled(n_weights, k_weights), evs)
 
 
+def world_utilities(utility_of_world_given_action, strategy, n_weights,
+                    k_weights):
+    evs = tf.matmul(strategy, utility_of_world_given_action, transpose_a=True)
+    p = tf.expand_dims(
+        world_weights(n_weights, k_weights, tf.squeeze(evs)), axis=1)
+    return tf.matmul(utility_of_world_given_action, p)
+
+
 def kofn_ev(evs, weights):
     return tf.tensordot(evs, weights, 1)
 
@@ -76,8 +84,7 @@ class DeterministicKofnConfig(object):
 
     def mdp_weights_op(self, evs_op):
         return tf.expand_dims(
-            world_weights(self.n_weights, self.k_weights,
-                             tf.squeeze(evs_op)),
+            world_weights(self.n_weights, self.k_weights, tf.squeeze(evs_op)),
             axis=1)
 
     def name(self):
