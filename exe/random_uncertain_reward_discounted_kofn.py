@@ -3,7 +3,7 @@ import tensorflow as tf
 import os
 import math
 import numpy as np
-from tf_kofn_robust_policy_optimization.robust.kofn import kofn_mdp_weights
+from tf_kofn_robust_policy_optimization.robust.kofn import world_weights
 from tf_kofn_robust_policy_optimization.discounted_mdp import generalized_policy_iteration_op, \
     inst_regrets_op, associated_ops, value_ops
 from tf_kofn_robust_policy_optimization.utils.timer import Timer
@@ -96,7 +96,7 @@ class KofnConfig(object):
 
     def mdp_weights_op(self, evs_op):
         return tf.expand_dims(
-            kofn_mdp_weights(self.n_weights, self.k_weights,
+            world_weights(self.n_weights, self.k_weights,
                                tf.squeeze(evs_op)),
             axis=1)
 

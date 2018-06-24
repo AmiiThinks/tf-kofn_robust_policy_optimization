@@ -142,7 +142,7 @@ class KOfNTest(tf.test.TestCase):
         ]  # yapf:disable
 
         evs = pr_mdp_evs(horizon, chance_prob_sequences, reward_models, strat)
-        mdp_weights = patient.kofn_mdp_weights(n_weights, k_weights, evs)
+        mdp_weights = patient.world_weights(n_weights, k_weights, evs)
         kofn_ev = patient.kofn_ev(evs, mdp_weights)
 
         self.assertAllClose([12.0361805, 12.0361805], evs)

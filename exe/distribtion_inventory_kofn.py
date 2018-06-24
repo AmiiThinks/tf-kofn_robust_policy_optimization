@@ -5,7 +5,7 @@ import os
 import numpy as np
 from tf_kofn_robust_policy_optimization.environments.inventory import InventoryMdpGenerator
 from tf_kofn_robust_policy_optimization.robust.kofn import kofn_ev, \
-    kofn_mdp_weights, kofn_regret_update
+    world_weights, kofn_regret_update
 from tf_kofn_robust_policy_optimization.regret_table import PrRegretMatchingPlus
 from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, \
     pr_mdp_optimal_policy_and_value, pr_mdp_evs
@@ -114,7 +114,7 @@ def train_and_save_kofn(i):
         reward_models,
         rm_plus.strat
     )
-    mdp_weights = kofn_mdp_weights(
+    mdp_weights = world_weights(
         final_data['n_weights'],
         d['k_weights'],
         evs

@@ -29,53 +29,36 @@ def prob_ith_element_is_sampled(n_weights, k_weights):
     # TODO The math for doing this properly is fairly simple, just need to
     # code it up and test it
     return l1_projection_to_simplex(
-        prob_ith_element_is_in_k_subset(n_weights, k_weights)
-    )
+        prob_ith_element_is_in_k_subset(n_weights, k_weights))
 
-
-# rank_weights = prob_ith_element_is_sampled(n_weights, k_weights)
-# chance_prob_sequences = [
-#     pr_mdp_rollout(horizon, roots[i], transitions[i])
-#     for i in range(len(n_weights))
-# ]
 
 def rank_to_element_weights(rank_weights, elements):
     # Sorted in ascending order
     ranked_indices = tf.reverse(
-        tf.nn.top_k(elements, k=elements.shape[-1].value, sorted=True)[1],
-        [0]
-    )
+        tf.nn.top_k(elements, k=elements.shape[-1].value, sorted=True)[1], [0])
     return tf.scatter_nd(
-        tf.expand_dims(ranked_indices, dim=1),
-        rank_weights,
-        [rank_weights.shape[0].value]
-    )
+        tf.expand_dims(ranked_indices, dim=1), rank_weights,
+        [rank_weights.shape[0].value])
 
 
-def kofn_mdp_weights(n_weights, k_weights, evs):
+def world_weights(n_weights, k_weights, evs):
     return rank_to_element_weights(
-        prob_ith_element_is_sampled(n_weights, k_weights),
-        evs
-    )
+        prob_ith_element_is_sampled(n_weights, k_weights), evs)
 
 
-def kofn_ev(evs, weights): return tf.tensordot(evs, weights, 1)
+def kofn_ev(evs, weights):
+    return tf.tensordot(evs, weights, 1)
 
 
-def kofn_regret_update(
-    chance_prob_sequence_list,
-    reward_models,
-    weights,
-    learner
-):
+def kofn_regret_update(chance_prob_sequence_list, reward_models, weights,
+                       learner):
     weighted_rewards = [
         chance_prob_sequence_list[i] * reward_models[i] * weights[i]
         for i in range(len(reward_models))
     ]
     inst_regrets = [learner.instantaneous_regrets(r) for r in weighted_rewards]
     regret_update = learner.updated_regrets(
-        sum(inst_regrets[1:], inst_regrets[0])
-    )
+        sum(inst_regrets[1:], inst_regrets[0]))
     return regret_update
 
 
@@ -88,12 +71,14 @@ class DeterministicKofnConfig(object):
         self.k_weights = [0.0] * n
         self.k_weights[k - 1] = 1.0
 
-    def num_sampled_mdps(self): return len(self.n_weights)
+    def num_sampled_mdps(self):
+        return len(self.n_weights)
 
     def mdp_weights_op(self, evs_op):
         return tf.expand_dims(
-            kofn_mdp_weights(self.n_weights, self.k_weights,
-                               tf.squeeze(evs_op)),
+            world_weights(self.n_weights, self.k_weights,
+                             tf.squeeze(evs_op)),
             axis=1)
 
-    def name(self): return 'k={}'.format(self.k)
+    def name(self):
+        return 'k={}'.format(self.k)
