@@ -3,7 +3,7 @@ import tensorflow as tf
 import os
 import math
 import numpy as np
-from tf_kofn_robust_policy_optimization.robust.k_of_n import k_of_n_mdp_weights
+from tf_kofn_robust_policy_optimization.robust.kofn import kofn_mdp_weights
 from tf_kofn_robust_policy_optimization.discounted_mdp import generalized_policy_iteration_op, \
     inst_regrets_op, associated_ops, value_ops
 from tf_kofn_robust_policy_optimization.utils.timer import Timer
@@ -15,7 +15,7 @@ random_seed = 10
 eval_random_seed = 42
 
 experiment_path = os.path.join(os.getcwd(), 'tmp',
-                               'random_uncertain_reward_discounted_k_of_n')
+                               'random_uncertain_reward_discounted_kofn')
 tf.set_log_level(tf.logging.INFO)
 if not os.path.exists(experiment_path): os.mkdirs(experiment_path)
 
@@ -96,7 +96,7 @@ class KofnConfig(object):
 
     def mdp_weights_op(self, evs_op):
         return tf.expand_dims(
-            k_of_n_mdp_weights(self.n_weights, self.k_weights,
+            kofn_mdp_weights(self.n_weights, self.k_weights,
                                tf.squeeze(evs_op)),
             axis=1)
 
@@ -168,7 +168,7 @@ class UncertainRewardKOfNMethod(object):
         return self.config.name()
 
 
-def train_and_save_k_of_n(*methods):
+def train_and_save_kofn(*methods):
     method_data = final_data['methods']
 
     all_ev_ops = [m.ev_op for m in methods]
@@ -311,12 +311,12 @@ with tf.Session(config=config) as sess:
         eval_baseline(
             root_op, P, reward_models_op, avg_reward_model, gamma=gamma)
 
-        k_of_n_methods = []
+        kofn_methods = []
         for i in [0] + list(range(99, num_sampled_mdps, 100)):
             config = KofnConfig(i, final_data['n_weights'])
-            k_of_n_methods.append(
+            kofn_methods.append(
                 UncertainRewardKOfNMethod(config, root_op, P, reward_models_op,
                                           gamma))
         sess.run(tf.global_variables_initializer())
-        train_and_save_k_of_n(*k_of_n_methods)
+        train_and_save_kofn(*kofn_methods)
         save_pkl(final_data, os.path(experiment_path, 'every_k'))

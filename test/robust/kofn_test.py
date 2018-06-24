@@ -3,7 +3,7 @@ try:
     tf.enable_eager_execution()
 except:
     pass
-import tf_kofn_robust_policy_optimization.robust.k_of_n as patient
+import tf_kofn_robust_policy_optimization.robust.kofn as patient
 from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, pr_mdp_evs
 
 
@@ -142,12 +142,12 @@ class KOfNTest(tf.test.TestCase):
         ]  # yapf:disable
 
         evs = pr_mdp_evs(horizon, chance_prob_sequences, reward_models, strat)
-        mdp_weights = patient.k_of_n_mdp_weights(n_weights, k_weights, evs)
-        k_of_n_ev = patient.k_of_n_ev(evs, mdp_weights)
+        mdp_weights = patient.kofn_mdp_weights(n_weights, k_weights, evs)
+        kofn_ev = patient.kofn_ev(evs, mdp_weights)
 
         self.assertAllClose([12.0361805, 12.0361805], evs)
         self.assertAllClose([0.0, 1.0], mdp_weights)
-        self.assertAllClose(12.0361805, k_of_n_ev)
+        self.assertAllClose(12.0361805, kofn_ev)
 
 
 if __name__ == '__main__':

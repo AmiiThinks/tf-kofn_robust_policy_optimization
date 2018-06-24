@@ -2,7 +2,7 @@
 import tensorflow as tf
 import os
 import numpy as np
-from tf_kofn_robust_policy_optimization.robust.k_of_n import DeterministicKofnConfig
+from tf_kofn_robust_policy_optimization.robust.kofn import DeterministicKofnConfig
 from tf_kofn_robust_policy_optimization.discounted_mdp import generalized_policy_iteration_op, \
     associated_ops, value_ops, \
     state_successor_policy_evaluation_op
@@ -22,7 +22,7 @@ with setup_timer:
     eval_random_seed = 42
 
     experiment = PickleExperiment(
-        'safe_rl_gridworld_k_of_n',
+        'safe_rl_gridworld_kofn',
         root=os.path.join(os.getcwd(), 'tmp'),
         seed=random_seed,
         log_level=tf.logging.INFO)
@@ -103,10 +103,10 @@ setup_timer.log_duration_s()
 
 method_setup_timer = Timer('Setup all k-of-N methods')
 with method_setup_timer:
-    k_of_n_methods = []
+    kofn_methods = []
     for i in [0] + list(range(99, final_data['n'], 100)):
         config = DeterministicKofnConfig(i + 1, final_data['n'])
-        k_of_n_methods.append(
+        kofn_methods.append(
             UncertainRewardDiscountedContinuingKofn(
                 config, root_op, P, reward_models_op, gamma))
 method_setup_timer.log_duration_s()
@@ -134,7 +134,7 @@ def eval_policy(evs, num_eval_mdp_reps):
     return evaluation_evs, eval_timer.duration_s(), area
 
 
-def train_and_save_k_of_n(*methods):
+def train_and_save_kofn(*methods):
     method_data = final_data['methods']
 
     all_ev_ops = [m.ev_op for m in methods]
@@ -286,6 +286,6 @@ with total_timer:
             sess.run(tf.global_variables_initializer())
             eval_baseline(
                 root_op, P, reward_models_op, known_rewards_op, gamma=gamma)
-            train_and_save_k_of_n(*k_of_n_methods)
+            train_and_save_kofn(*kofn_methods)
             experiment.save(final_data, 'every_k')
 total_timer.log_duration_s()

@@ -4,8 +4,8 @@ import sys
 import os
 import numpy as np
 from tf_kofn_robust_policy_optimization.environments.inventory import InventoryMdpGenerator
-from tf_kofn_robust_policy_optimization.robust.k_of_n import k_of_n_ev, \
-    k_of_n_mdp_weights, k_of_n_regret_update
+from tf_kofn_robust_policy_optimization.robust.kofn import kofn_ev, \
+    kofn_mdp_weights, kofn_regret_update
 from tf_kofn_robust_policy_optimization.regret_table import PrRegretMatchingPlus
 from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, \
     pr_mdp_optimal_policy_and_value, pr_mdp_evs
@@ -19,7 +19,7 @@ random_seed = 10
 eval_random_seed = 42
 
 experiment = PickleExperiment(
-    'distribution_inventory_k_of_n',
+    'distribution_inventory_kofn',
     root=os.path.join(os.getcwd(), 'tmp'),
     seed=random_seed,
     log_level=tf.logging.INFO
@@ -83,7 +83,7 @@ def eval_policy(evs):
     return evaluation_evs, eval_timer.duration_s(), area
 
 
-def train_and_save_k_of_n(i):
+def train_and_save_kofn(i):
     name = 'k={}'.format(i + 1)
     print('# {}'.format(name))
 
@@ -114,13 +114,13 @@ def train_and_save_k_of_n(i):
         reward_models,
         rm_plus.strat
     )
-    mdp_weights = k_of_n_mdp_weights(
+    mdp_weights = kofn_mdp_weights(
         final_data['n_weights'],
         d['k_weights'],
         evs
     )
-    ev = k_of_n_ev(evs, mdp_weights)
-    regret_update = k_of_n_regret_update(
+    ev = kofn_ev(evs, mdp_weights)
+    regret_update = kofn_regret_update(
         chance_prob_sequence_list,
         reward_models,
         mdp_weights,
@@ -215,5 +215,5 @@ with tf.Session(config=config) as sess:
     with sess.as_default():
         eval_baseline()
         for i in [0] + list(range(9, num_sampled_mdps, 10)):
-            train_and_save_k_of_n(i)
+            train_and_save_kofn(i)
         experiment.save(final_data, 'every_k')

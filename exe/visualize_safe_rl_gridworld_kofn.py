@@ -74,4 +74,4 @@ def plot(experiment, num_plot_columns=4):
 
 
 if __name__ == '__main__':
-    plot(os.path.join(os.getcwd(), 'tmp', 'safe_rl_gridworld_k_of_n'))
+    plot(os.path.join(os.getcwd(), 'tmp', 'safe_rl_gridworld_kofn'))

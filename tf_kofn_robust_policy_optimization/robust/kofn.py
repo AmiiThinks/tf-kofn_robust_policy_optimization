@@ -52,17 +52,17 @@ def rank_to_element_weights(rank_weights, elements):
     )
 
 
-def k_of_n_mdp_weights(n_weights, k_weights, evs):
+def kofn_mdp_weights(n_weights, k_weights, evs):
     return rank_to_element_weights(
         prob_ith_element_is_sampled(n_weights, k_weights),
         evs
     )
 
 
-def k_of_n_ev(evs, weights): return tf.tensordot(evs, weights, 1)
+def kofn_ev(evs, weights): return tf.tensordot(evs, weights, 1)
 
 
-def k_of_n_regret_update(
+def kofn_regret_update(
     chance_prob_sequence_list,
     reward_models,
     weights,
@@ -92,7 +92,7 @@ class DeterministicKofnConfig(object):
 
     def mdp_weights_op(self, evs_op):
         return tf.expand_dims(
-            k_of_n_mdp_weights(self.n_weights, self.k_weights,
+            kofn_mdp_weights(self.n_weights, self.k_weights,
                                tf.squeeze(evs_op)),
             axis=1)
 
