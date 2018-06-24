@@ -12,7 +12,7 @@ from tf_kofn_robust_policy_optimization.utils.quadrature import midpoint_quadrat
 from tf_kofn_robust_policy_optimization.utils.experiment import PickleExperiment
 from tf_kofn_robust_policy_optimization.utils.random import reset_random_state
 from tf_kofn_robust_policy_optimization.robust.uncertain_reward_discounted_continuing_kofn import \
-    UncertainRewardDiscountedContinuingKofn
+    UncertainRewardDiscountedContinuingKofnGame
 from tf_kofn_robust_policy_optimization.environments.gridworld import Gridworld
 from tf_kofn_robust_policy_optimization.utils.sampling import sample
 
@@ -108,7 +108,7 @@ with method_setup_timer:
     for i in [0] + list(range(99, final_data['n'], 100)):
         config = DeterministicKofnGameTemplate(i + 1, final_data['n'])
         kofn_methods.append(
-            UncertainRewardDiscountedContinuingKofn(
+            UncertainRewardDiscountedContinuingKofnGame(
                 config, root_op, P, reward_models_op, gamma))
 method_setup_timer.log_duration_s()
 
