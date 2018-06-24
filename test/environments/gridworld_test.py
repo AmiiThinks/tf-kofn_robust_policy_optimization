@@ -3,7 +3,7 @@ try:
     tf.enable_eager_execution()
 except:
     pass
-from k_of_n_mdp_policy_opt.environments.gridworld import Gridworld
+from tf_kofn_robust_policy_optimization.environments.gridworld import Gridworld
 
 
 class GridworldTest(tf.test.TestCase):

@@ -3,13 +3,13 @@ import tensorflow as tf
 import os
 import math
 import numpy as np
-from k_of_n_mdp_policy_opt.robust.k_of_n import k_of_n_mdp_weights
-from k_of_n_mdp_policy_opt.discounted_mdp import generalized_policy_iteration_op, \
+from tf_kofn_robust_policy_optimization.robust.k_of_n import k_of_n_mdp_weights
+from tf_kofn_robust_policy_optimization.discounted_mdp import generalized_policy_iteration_op, \
     inst_regrets_op, associated_ops, value_ops
-from k_of_n_mdp_policy_opt.utils.timer import Timer
-from k_of_n_mdp_policy_opt.utils import midpoint_quadrature, save_pkl
-from k_of_n_mdp_policy_opt.utils.random import reset_random_state
-from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
+from tf_kofn_robust_policy_optimization.utils.timer import Timer
+from tf_kofn_robust_policy_optimization.utils import midpoint_quadrature, save_pkl
+from tf_kofn_robust_policy_optimization.utils.random import reset_random_state
+from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
 
 random_seed = 10
 eval_random_seed = 42

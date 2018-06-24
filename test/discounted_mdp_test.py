@@ -4,14 +4,14 @@ try:
 except:
     pass
 import numpy as np
-from k_of_n_mdp_policy_opt.discounted_mdp import root_value_op, \
+from tf_kofn_robust_policy_optimization.discounted_mdp import root_value_op, \
     state_action_successor_policy_evaluation_op, \
     primal_action_value_policy_evaluation_op, \
     dual_action_value_policy_evaluation_op, \
     regret_matching_op, \
     generalized_policy_iteration_op, \
     state_successor_policy_evaluation_op
-from k_of_n_mdp_policy_opt.utils.tensor import \
+from tf_kofn_robust_policy_optimization.utils.tensor import \
     normalized, \
     l1_projection_to_simplex, \
     matrix_to_block_matrix_op

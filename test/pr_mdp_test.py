@@ -4,12 +4,12 @@ try:
 except:
     pass
 import numpy as np
-from k_of_n_mdp_policy_opt.pr_mdp import \
+from tf_kofn_robust_policy_optimization.pr_mdp import \
     pr_mdp_rollout, \
     pr_mdp_expected_value, \
     pr_mdp_optimal_policy_and_value
-from k_of_n_mdp_policy_opt.utils.sequence import num_pr_sequences
-from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
+from tf_kofn_robust_policy_optimization.utils.sequence import num_pr_sequences
+from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
 
 
 class PrMdpTest(tf.test.TestCase):

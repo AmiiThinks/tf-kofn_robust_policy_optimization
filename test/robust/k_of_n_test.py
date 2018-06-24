@@ -3,8 +3,8 @@ try:
     tf.enable_eager_execution()
 except:
     pass
-import k_of_n_mdp_policy_opt.robust.k_of_n as patient
-from k_of_n_mdp_policy_opt.pr_mdp import pr_mdp_rollout, pr_mdp_evs
+import tf_kofn_robust_policy_optimization.robust.k_of_n as patient
+from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, pr_mdp_evs
 
 
 class KOfNTest(tf.test.TestCase):

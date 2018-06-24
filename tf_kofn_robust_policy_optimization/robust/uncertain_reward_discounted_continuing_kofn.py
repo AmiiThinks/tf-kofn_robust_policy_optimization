@@ -1,7 +1,7 @@
 import tensorflow as tf
-from k_of_n_mdp_policy_opt.discounted_mdp import inst_regrets_op, associated_ops, \
+from tf_kofn_robust_policy_optimization.discounted_mdp import inst_regrets_op, associated_ops, \
     value_ops, state_successor_policy_evaluation_op
-from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
+from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
 
 
 class UncertainRewardDiscountedContinuingKofn(object):

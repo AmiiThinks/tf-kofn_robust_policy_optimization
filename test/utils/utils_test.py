@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from k_of_n_mdp_policy_opt.utils import means
+from tf_kofn_robust_policy_optimization.utils import means
 
 
 class UtilsTest(tf.test.TestCase):

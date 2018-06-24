@@ -4,10 +4,10 @@ try:
 except:
     pass
 import numpy as np
-from k_of_n_mdp_policy_opt.utils.tensor import l1_projection_to_simplex
-from k_of_n_mdp_policy_opt.regret_table import RegretTable, \
+from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
+from tf_kofn_robust_policy_optimization.regret_table import RegretTable, \
     PrRegretMatchingPlus, PrRegretTable
-from k_of_n_mdp_policy_opt.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
+from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \
     pr_mdp_optimal_policy_and_value
 
 

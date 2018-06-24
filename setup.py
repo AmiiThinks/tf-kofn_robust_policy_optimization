@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='k_of_n_mdp_policy_opt',
+    name='tf-kofn_robust_policy_optimization',
     version='0.0.1',
     license='',
     packages=find_packages(),

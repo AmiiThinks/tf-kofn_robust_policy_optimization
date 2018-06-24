@@ -3,7 +3,7 @@ try:
     tf.enable_eager_execution()
 except:
     pass
-import k_of_n_mdp_policy_opt.utils.sequence as patient
+import tf_kofn_robust_policy_optimization.utils.sequence as patient
 
 
 class SequenceUtilsTest(tf.test.TestCase):

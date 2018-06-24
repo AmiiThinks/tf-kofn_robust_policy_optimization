@@ -2,18 +2,18 @@
 import tensorflow as tf
 import os
 import numpy as np
-from k_of_n_mdp_policy_opt.robust.k_of_n import DeterministicKofnConfig
-from k_of_n_mdp_policy_opt.discounted_mdp import generalized_policy_iteration_op, \
+from tf_kofn_robust_policy_optimization.robust.k_of_n import DeterministicKofnConfig
+from tf_kofn_robust_policy_optimization.discounted_mdp import generalized_policy_iteration_op, \
     associated_ops, value_ops, \
     state_successor_policy_evaluation_op
-from k_of_n_mdp_policy_opt.utils.timer import Timer
-from k_of_n_mdp_policy_opt.utils.quadrature import midpoint_quadrature
-from k_of_n_mdp_policy_opt.utils.experiment import PickleExperiment
-from k_of_n_mdp_policy_opt.utils.random import reset_random_state
-from k_of_n_mdp_policy_opt.robust.uncertain_reward_discounted_continuing_kofn import \
+from tf_kofn_robust_policy_optimization.utils.timer import Timer
+from tf_kofn_robust_policy_optimization.utils.quadrature import midpoint_quadrature
+from tf_kofn_robust_policy_optimization.utils.experiment import PickleExperiment
+from tf_kofn_robust_policy_optimization.utils.random import reset_random_state
+from tf_kofn_robust_policy_optimization.robust.uncertain_reward_discounted_continuing_kofn import \
     UncertainRewardDiscountedContinuingKofn
-from k_of_n_mdp_policy_opt.environments.gridworld import Gridworld
-from k_of_n_mdp_policy_opt.utils.sampling import sample
+from tf_kofn_robust_policy_optimization.environments.gridworld import Gridworld
+from tf_kofn_robust_policy_optimization.utils.sampling import sample
 
 
 setup_timer = Timer('Setup')

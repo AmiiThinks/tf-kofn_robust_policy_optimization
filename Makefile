@@ -1,7 +1,7 @@
 PIP :=pip
 PYTHON :=python
-NAME :=k_of_n_mdp_policy_opt
-LIB_NAME :=k_of_n_mdp_policy_opt
+NAME :=tf-kofn_robust_policy_optimization
+LIB_NAME :=tf_kofn_robust_policy_optimization
 
 .PHONY: default
 default: install

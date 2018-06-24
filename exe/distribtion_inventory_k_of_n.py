@@ -3,16 +3,16 @@ import tensorflow as tf
 import sys
 import os
 import numpy as np
-from k_of_n_mdp_policy_opt.environments.inventory import InventoryMdpGenerator
-from k_of_n_mdp_policy_opt.robust.k_of_n import k_of_n_ev, \
+from tf_kofn_robust_policy_optimization.environments.inventory import InventoryMdpGenerator
+from tf_kofn_robust_policy_optimization.robust.k_of_n import k_of_n_ev, \
     k_of_n_mdp_weights, k_of_n_regret_update
-from k_of_n_mdp_policy_opt.regret_table import PrRegretMatchingPlus
-from k_of_n_mdp_policy_opt.pr_mdp import pr_mdp_rollout, \
+from tf_kofn_robust_policy_optimization.regret_table import PrRegretMatchingPlus
+from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, \
     pr_mdp_optimal_policy_and_value, pr_mdp_evs
-from k_of_n_mdp_policy_opt.utils.timer import Timer
-from k_of_n_mdp_policy_opt.utils.quadrature import midpoint_quadrature
-from k_of_n_mdp_policy_opt.utils.experiment import PickleExperiment
-from k_of_n_mdp_policy_opt.utils.random import reset_random_state
+from tf_kofn_robust_policy_optimization.utils.timer import Timer
+from tf_kofn_robust_policy_optimization.utils.quadrature import midpoint_quadrature
+from tf_kofn_robust_policy_optimization.utils.experiment import PickleExperiment
+from tf_kofn_robust_policy_optimization.utils.random import reset_random_state
 
 
 random_seed = 10

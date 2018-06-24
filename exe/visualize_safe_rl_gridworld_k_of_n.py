@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import os
 import math
 import numpy as np
-from k_of_n_mdp_policy_opt.utils import load_pkl
-from k_of_n_mdp_policy_opt.environments.gridworld import Gridworld
+from tf_kofn_robust_policy_optimization.utils import load_pkl
+from tf_kofn_robust_policy_optimization.environments.gridworld import Gridworld
 
 
 def plot(experiment, num_plot_columns=4):
