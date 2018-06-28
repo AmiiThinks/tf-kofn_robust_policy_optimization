@@ -1,8 +1,7 @@
 import tensorflow as tf
 from tf_kofn_robust_policy_optimization.discounted_mdp import \
-    inst_regrets_op, \
-    associated_ops, \
-    value_ops, state_successor_policy_evaluation_op
+    state_successor_policy_evaluation_op, \
+    dual_action_value_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.utils.tensor import \
     l1_projection_to_simplex
 
@@ -98,140 +97,149 @@ class DeterministicKofnGameTemplate(object):
 
 
 class ContextualKofnGame(object):
-    def __init__(self, mixture_constraint_weights, u, strat):
-        n = mixture_constraint_weights.shape[0].value
-        assert u.shape[0].value == n
+    world_idx = -1
+    context_idx = 0
+    action_idx = 1
 
-        num_contexts = strat.shape[0].value
-        assert u.shape[1].value == num_contexts
+    def __init__(self,
+                 mixture_constraint_weights,
+                 u,
+                 strat,
+                 context_weights=None):
+        self.mixture_constraint_weights = tf.convert_to_tensor(
+            mixture_constraint_weights)
+        self.u = tf.convert_to_tensor(u)
+        self.strat = tf.convert_to_tensor(strat)
 
-        num_actions = strat.shape[1].value
-        assert u.shape[2].value == num_actions
+        assert self.u.shape[self.world_idx].value == self.num_worlds()
+        assert self.u.shape[self.context_idx].value == self.num_contexts()
 
-        self.mixture_constraint_weights = mixture_constraint_weights
-        self.u = u
+        assert u.shape[self.action_idx].value == self.num_actions()
 
+        self.policy_weighted_action_values = self.u * tf.expand_dims(
+            self.strat, axis=self.world_idx)
         self.context_evs = tf.reduce_sum(
-            u * tf.tile(tf.expand_dims(strat, axis=0), [n, 1, 1]), axis=2)
-        assert self.context_evs.shape[0].value == n
-        assert self.context_evs.shape[1].value == num_contexts
+            self.policy_weighted_action_values, axis=self.action_idx)
+        assert self.context_evs.shape[
+            self.world_idx].value == self.num_worlds()
+        assert self.context_evs.shape[
+            self.context_idx].value == self.num_contexts()
 
-        self.evs = tf.reduce_mean(self.context_evs, axis=1, keep_dims=True)
+        if context_weights is None:
+            self.evs = tf.reduce_mean(self.context_evs, axis=self.context_idx)
+        else:
+            self.evs = tf.tensordot(
+                self.context_evs, context_weights, axes=self.context_idx)
 
-        self.k_weights = tf.expand_dims(
-            rank_to_element_weights(self.mixture_constraint_weights,
-                                    tf.squeeze(self.evs)),
-            axis=1)
+        self.k_weights = rank_to_element_weights(
+            self.mixture_constraint_weights, self.evs)
 
-        self.root_ev = tf.squeeze(
-            tf.matmul(self.evs, self.k_weights, transpose_a=True))
+        self.root_ev = tf.tensordot(self.evs, self.k_weights, axes=0)
 
+        shape = [1] * len(u.shape)
+        shape[self.world_idx] = self.num_worlds()
         self.kofn_utility = tf.reduce_sum(
-            u * tf.tile(
-                tf.expand_dims(self.k_weights, axis=2),
-                [1, num_contexts, num_actions]),
-            axis=0)
-        assert self.kofn_utility.shape[0].value == num_contexts
-        assert self.kofn_utility.shape[1].value == num_actions
+            u * tf.reshape(self.k_weights, shape), axis=self.world_idx)
+
+        assert self.kofn_utility.shape[
+            self.context_idx].value == self.num_contexts()
+        assert self.kofn_utility.shape[
+            self.action_idx].value == self.num_actions()
+
+    def num_contexts(self):
+        return self.strat.shape[self.context_idx].value
+
+    def num_actions(self):
+        return self.strat.shape[self.action_idx].value
+
+    def num_worlds(self):
+        return self.mixture_constraint_weights.shape[0].value
 
 
 class UncertainRewardDiscountedContinuingKofnGame(object):
+    world_idx = ContextualKofnGame.world_idx
+    state_idx = ContextualKofnGame.context_idx
+    action_idx = ContextualKofnGame.action_idx
+    successor_state_idx = action_idx + 1
+
     def __init__(self,
-                 config,
+                 mixture_constraint_weights,
                  root_op,
                  transition_model_op,
                  reward_models_op,
-                 gamma,
-                 cap_negative_advantages=False):
-        if reward_models_op.shape[1].value != config.num_sampled_worlds():
-            print(reward_models_op.shape[1].value)
-            print(config.num_sampled_worlds())
-        assert reward_models_op.shape[1].value == config.num_sampled_worlds()
-        self.config = config
-        self.root_op = root_op
-        self.transition_model_op = transition_model_op
-        self.reward_models_op = reward_models_op
+                 policy,
+                 gamma=0.9,
+                 threshold=1e-15,
+                 max_num_iterations=-1):
+        self.mixture_constraint_weights = tf.convert_to_tensor(
+            mixture_constraint_weights)
+        self.root_op = tf.convert_to_tensor(root_op)
+        self.transition_model_op = tf.convert_to_tensor(transition_model_op)
+        self.reward_models_op = tf.convert_to_tensor(reward_models_op)
+        self.policy = tf.convert_to_tensor(policy)
 
-        self.advantages_op = tf.Variable(
-            tf.zeros([self.num_states(), self.num_actions()]))
+        self.gamma = gamma
+        self.threshold = threshold
+        self.max_num_iterations = max_num_iterations
 
-        (self.Pi_op, self.action_values_op, self.state_values_op,
-         self.evs_op) = associated_ops(
-             self.advantages_op,
-             root_op,
-             transition_model_op,
-             reward_models_op,
-             gamma=gamma,
-             max_num_iterations=int(1e3))
+        assert self.reward_models_op.shape[
+            self.world_idx].value == self.num_worlds()
 
-        assert (len(self.evs_op.shape) == 2)
-        assert (self.evs_op.shape[0].value == reward_models_op.shape[1].value)
-        assert (self.evs_op.shape[1].value == 1)
+        assert self.reward_models_op.shape[
+            self.state_idx].value == self.num_states()
+        assert (self.transition_model_op.shape[self.state_idx].value ==
+                self.num_states())
+        assert (self.transition_model_op.shape[self.successor_state_idx].value
+                == self.num_states())
 
-        self.mdp_weights_op = world_weights(self.config.n_weights,
-                                            self.config.k_weights,
-                                            tf.squeeze(self.evs_op))
-        self.mdp_weights_op = tf.expand_dims(self.mdp_weights_op, axis=1)
+        assert (self.reward_models_op.shape[self.action_idx].value ==
+                self.num_actions)()
+        assert (self.transition_model_op.shape[self.action_idx].value ==
+                self.num_actions)()
 
-        self.ev_op = tf.squeeze(
-            tf.matmul(self.evs_op, self.mdp_weights_op, transpose_a=True))
+        self.action_values = dual_action_value_policy_evaluation_op(
+            self.transition_model_op,
+            self.policy,
+            self.reward_models_op,
+            gamma=gamma,
+            threshold=threshold,
+            max_num_iterations=max_num_iterations)
+        assert self.action_values.shape[
+            self.state_idx].value == self.num_states()
+        assert self.action_values.shape[
+            self.action_idx].value == self.num_actions()
+        assert self.action_values.shape[
+            self.world_idx].value == self.num_worlds()
 
-        self.max_num_training_pe_iterations = tf.placeholder(tf.int32)
-        (self.training_action_values_op, self.training_state_values_op,
-         self.training_evs_op) = value_ops(
-             self.Pi_op,
-             root_op,
-             transition_model_op,
-             reward_models_op,
-             gamma=gamma,
-             threshold=1e-8,
-             max_num_iterations=self.max_num_training_pe_iterations)
+        self.contextual_kofn_game = ContextualKofnGame(
+            self.mixture_constraint_weights, self.action_values, self.policy,
+            self.root_op)
 
-        self.training_mdp_weights_op = world_weights(self.config.n_weights,
-                                                     self.config.k_weights,
-                                                     tf.squeeze(self.evs_op))
-        self.training_mdp_weights_op = tf.expand_dims(
-            self.training_evs_op, axis=1)
+    @property
+    def state_values(self):
+        self.state_values = self.contextual_kofn_game.context_evs
 
-        self.r_s_op = tf.reshape(
-            inst_regrets_op(self.training_action_values_op, Pi=self.Pi_op)
-            @ self.training_mdp_weights_op,
-            shape=self.advantages_op.shape)
+    @property
+    def evs(self):
+        return self.contextual_kofn_game.evs
 
-        next_advantages = self.advantages_op + self.r_s_op
-        if cap_negative_advantages:  # RM+
-            next_advantages = tf.maximum(0.0, next_advantages)
+    @property
+    def k_weights(self):
+        return self.contextual_kofn_game.k_weights
 
-        self.update_op = tf.assign(self.advantages_op, next_advantages)
-        '''
-        Probability of each action given each state.
+    @property
+    def root_ev(self):
+        return self.contextual_kofn_game.root_ev
 
-        |States| by |actions| Tensor.
-        '''
-        self.policy_op = l1_projection_to_simplex(self.advantages_op, axis=1)
-        '''
-        Discounted state successor distribution.
-
-        |States| by |States| Tensor.
-        '''
-        self.state_successor_op = state_successor_policy_evaluation_op(
-            transition_model_op, self.Pi_op, gamma=gamma)
-        '''
-        Probability of terminating in each state.
-
-        |States| by 1 Tensor
-        '''
-        self.state_distribution_op = tf.matmul(
-            tf.transpose(self.state_successor_op), root_op)
+    @property
+    def kofn_utility(self):
+        return self.kofn_utility
 
     def num_states(self):
-        return self.root_op.shape[0].value
+        return self.root_op.shape[self.state_idx].value
 
     def num_actions(self):
-        return int(self.transition_model_op.shape[0].value / self.num_states())
+        return self.policy.shape[self.action_idx].value
 
-    def name(self):
-        return self.config.label()
-
-    def __str__(self):
-        return self.name()
+    def num_worlds(self):
+        return self.mixture_constraint_weights.shape[0].value

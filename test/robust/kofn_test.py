@@ -188,7 +188,7 @@ class KofnTest(tf.test.TestCase):
             utilities = tf.reduce_mean(
                 patient.ContextualKofnGame(
                     game_template.prob_ith_element_is_sampled,
-                    tf.transpose(utility_of_instance_given_action, [2, 1, 0]),
+                    tf.transpose(utility_of_instance_given_action, [1, 0, 2]),
                     tf.transpose(strategy)).kofn_utility,
                 axis=0)
 
@@ -228,19 +228,19 @@ class KofnTest(tf.test.TestCase):
             utility_of_instance_given_action, name='normal_random_utils')
         game = patient.ContextualKofnGame(
             game_template.prob_ith_element_is_sampled,
-            tf.transpose(utility_of_instance_given_action, [2, 1, 0]),
+            tf.transpose(utility_of_instance_given_action, [1, 0, 2]),
             tf.transpose(strategy))
 
         utilities = tf.reduce_mean(game.kofn_utility, axis=0)
 
         with self.test_session():
             self.assertAllClose(
-                [[0.13], [-3.5e-4], [0.55], [0.29], [-0.55]],
+                [0.13, -3.5e-4, 0.55, 0.29, -0.55],
                 game.evs,
                 rtol=1e-2,
                 atol=1e-2)
 
-            self.assertAllClose([[0], [0.5], [0], [0], [0.5]], game.k_weights)
+            self.assertAllClose([0, 0.5, 0, 0, 0.5], game.k_weights)
 
             self.assertAllClose([[0.5863516330718994], [0.13367994129657745],
                                  [0.2799684405326843]], strategy)
