@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tf_kofn_robust_policy_optimization.discounted_mdp import \
-    state_successor_policy_evaluation_op, \
     dual_action_value_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.utils.tensor import \
     l1_projection_to_simplex
@@ -193,9 +192,9 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
                 == self.num_states())
 
         assert (self.reward_models_op.shape[self.action_idx].value ==
-                self.num_actions)()
+                self.num_actions())
         assert (self.transition_model_op.shape[self.action_idx].value ==
-                self.num_actions)()
+                self.num_action())
 
         self.action_values = dual_action_value_policy_evaluation_op(
             self.transition_model_op,
