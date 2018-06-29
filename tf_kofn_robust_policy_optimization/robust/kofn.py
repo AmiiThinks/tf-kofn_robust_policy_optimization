@@ -194,7 +194,7 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         assert (self.reward_models_op.shape[self.action_idx].value ==
                 self.num_actions())
         assert (self.transition_model_op.shape[self.action_idx].value ==
-                self.num_action())
+                self.num_actions())
 
         self.action_values = dual_action_value_policy_evaluation_op(
             self.transition_model_op,
