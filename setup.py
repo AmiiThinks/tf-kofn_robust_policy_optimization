@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tf-kofn_robust_policy_optimization',
-    version='1.0.2',
+    version='1.0.3',
     license='',
     packages=find_packages(),
     install_requires=[

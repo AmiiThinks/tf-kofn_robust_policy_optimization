@@ -52,17 +52,19 @@ def dual_action_value_policy_evaluation_op(transitions,
                                            max_num_iterations=-1):
     policy = tf.convert_to_tensor(policy)
     r = tf.convert_to_tensor(r)
+    extra_dims = r.shape[2:]
+    shape = policy.shape.concatenate(extra_dims)
+    H = state_action_successor_policy_evaluation_op(
+        transitions,
+        policy,
+        gamma=gamma,
+        threshold=threshold,
+        max_num_iterations=max_num_iterations)
     return tf.reshape(
         tf.tensordot(
-            state_action_successor_policy_evaluation_op(
-                transitions,
-                policy,
-                gamma=gamma,
-                threshold=threshold,
-                max_num_iterations=max_num_iterations),
-            r,
-            axes=[[1], [0]]) / (1.0 - gamma),
-        policy.shape.concatenate(r.shape[2:]))
+            H,
+            tf.reshape(r, H.shape[0:1].concatenate(r.shape[2:])),
+            axes=[[1], [0]]) / (1.0 - gamma), shape)
 
 
 def primal_action_value_policy_evaluation_op(P,

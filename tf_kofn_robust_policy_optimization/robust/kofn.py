@@ -181,11 +181,11 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         self.threshold = threshold
         self.max_num_iterations = max_num_iterations
 
-        assert self.reward_models_op.shape[
-            self.world_idx].value == self.num_worlds()
+        assert (self.reward_models_op.shape[self.world_idx].value ==
+                self.num_worlds())
 
-        assert self.reward_models_op.shape[
-            self.state_idx].value == self.num_states()
+        assert (self.reward_models_op.shape[self.state_idx].value ==
+                self.num_states())
         assert (self.transition_model_op.shape[self.state_idx].value ==
                 self.num_states())
         assert (self.transition_model_op.shape[self.successor_state_idx].value

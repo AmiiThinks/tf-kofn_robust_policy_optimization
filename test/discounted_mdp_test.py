@@ -95,7 +95,7 @@ class DiscountedMdpTest(tf.test.TestCase):
                     dual_action_value_policy_evaluation_op(
                         tf.reshape(P, [num_states, num_actions, num_states]),
                         policy,
-                        r,
+                        tf.reshape(r, [num_states, num_actions]),
                         gamma=gamma,
                         threshold=threshold,
                         max_num_iterations=max_num_iterations),
@@ -109,7 +109,7 @@ class DiscountedMdpTest(tf.test.TestCase):
             patient = dual_action_value_policy_evaluation_op(
                 tf.reshape(P, [num_states, num_actions, num_states]),
                 policy,
-                r_both,
+                tf.reshape(r_both, [num_states, num_actions, 2]),
                 gamma=gamma,
                 threshold=threshold,
                 max_num_iterations=max_num_iterations)
