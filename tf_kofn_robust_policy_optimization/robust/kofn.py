@@ -36,12 +36,15 @@ def prob_ith_element_is_sampled(n_weights, k_weights):
 
 
 def rank_to_element_weights(rank_weights, elements):
-    # Sorted in ascending order
-    ranked_indices = tf.reverse(
-        tf.nn.top_k(elements, k=elements.shape[-1].value, sorted=True)[1], [0])
+    rank_weights = tf.squeeze(tf.convert_to_tensor(rank_weights))
+    elements = tf.squeeze(tf.convert_to_tensor(elements))
+
+    ranked_indices = tf.contrib.framework.argsort(
+        elements, direction='ASCENDING')
     return tf.scatter_nd(
-        tf.expand_dims(ranked_indices, dim=1), rank_weights,
-        [rank_weights.shape[0].value])
+        tf.expand_dims(ranked_indices, axis=1),
+        rank_weights,
+        shape=rank_weights.shape)
 
 
 def world_weights(n_weights, k_weights, evs):
@@ -123,17 +126,22 @@ class ContextualKofnGame(object):
             self.world_idx].value == self.num_worlds()
         assert self.context_evs.shape[
             self.context_idx].value == self.num_contexts()
+        assert len(self.context_evs.shape) == 2
 
-        if context_weights is None:
-            self.evs = tf.reduce_mean(self.context_evs, axis=self.context_idx)
-        else:
-            self.evs = tf.tensordot(
-                self.context_evs, context_weights, axes=self.context_idx)
+        weighted_context_evs = self.context_evs
+        if context_weights is not None:
+            context_weights = tf.convert_to_tensor(context_weights)
+            context_weights = tf.reshape(context_weights,
+                                         [self.num_contexts(), 1])
+            weighted_context_evs *= context_weights
+
+        self.evs = tf.reduce_mean(weighted_context_evs, axis=self.context_idx)
+        assert self.evs.shape[self.world_idx].value == self.num_worlds()
 
         self.k_weights = rank_to_element_weights(
             self.mixture_constraint_weights, self.evs)
 
-        self.root_ev = tf.tensordot(self.evs, self.k_weights, axes=0)
+        self.root_ev = tf.reduce_sum(self.evs * self.k_weights)
 
         shape = [1] * len(u.shape)
         shape[self.world_idx] = self.num_worlds()
@@ -232,7 +240,7 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
 
     @property
     def kofn_utility(self):
-        return self.kofn_utility
+        return self.contextual_kofn_game.kofn_utility
 
     def num_states(self):
         return self.root_op.shape[self.state_idx].value

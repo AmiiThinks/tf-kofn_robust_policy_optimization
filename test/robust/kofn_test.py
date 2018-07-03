@@ -14,6 +14,11 @@ class KofnTest(tf.test.TestCase):
         tf.set_random_seed(42)
         np.random.seed(42)
 
+    def test_rank_to_element_weights(self):
+        weights = patient.rank_to_element_weights([0.1, 0.7, 0.2],
+                                                  [-1.0, -2.0, -3.0])
+        self.assertAllClose([0.2, 0.7, 0.1], weights)
+
     def test_prob_ith_element_is_in_k_subset(self):
         n_weights = [1, 0.0]
         k_weights = [1, 0.0]
@@ -152,7 +157,7 @@ class KofnTest(tf.test.TestCase):
         kofn_ev = patient.kofn_ev(evs, mdp_weights)
 
         self.assertAllClose([12.0361805, 12.0361805], evs)
-        self.assertAllClose([0.0, 1.0], mdp_weights)
+        self.assertAllClose([1.0, 0.0], mdp_weights)
         self.assertAllClose(12.0361805, kofn_ev)
 
     def test_determinstic_k_of_n_game_template_creation(self):
