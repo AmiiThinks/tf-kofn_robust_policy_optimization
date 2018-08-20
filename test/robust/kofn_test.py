@@ -167,6 +167,16 @@ class KofnTest(tf.test.TestCase):
         self.assertEqual(n, game_template.num_sampled_worlds())
         self.assertEqual('{}-of-{} template'.format(k, n), str(game_template))
 
+    def test_determinstic_k_of_n_game_template_yml(self):
+        n = 5
+        k = 2
+        game_template = patient.DeterministicKofnGameTemplate(k, n)
+
+        for i in range(8):
+            self.assertEqual(
+                ' ' * i + "n: {}\n".format(n) + ' ' * i + "k: {}".format(k),
+                game_template.to_yml(i))
+
     def test_1_of_5_game_utilties(self):
         n = 5
         num_actions = 3

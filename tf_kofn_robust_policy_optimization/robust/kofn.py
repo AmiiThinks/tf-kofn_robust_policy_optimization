@@ -88,6 +88,13 @@ class DeterministicKofnGameTemplate(object):
         self.prob_ith_element_is_sampled = prob_ith_element_is_sampled(
             self.n_weights, self.k_weights)
 
+    def to_yml(self, indent=0):
+        ws = ' ' * indent
+        return "\n".join([
+            '{}{}: {}'.format(ws, key, value)
+            for key, value in [('n', self.num_sampled_worlds()), ('k', self.k)]
+        ])
+
     def num_sampled_worlds(self):
         return len(self.n_weights)
 
