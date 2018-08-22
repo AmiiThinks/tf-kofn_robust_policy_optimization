@@ -1,63 +1,10 @@
 import tensorflow as tf
 from tf_kofn_robust_policy_optimization.discounted_mdp import \
     dual_action_value_policy_evaluation_op
-from tf_kofn_robust_policy_optimization.utils.tensor import \
-    l1_projection_to_simplex
-
-
-def prob_ith_element_is_in_k_subset(n_weights, k_weights):
-    '''
-    Linear time algorithm to find the probability that the ith element is
-    included given weights that chance uses to sample N and k.
-
-    The naive algorithm for computing this is quadratic time. To derive
-    the linear time algorithm, look at the probability that k is less than i
-    (the completment of the desired probability) and
-    split the sum into the part when N = n for n < i and the part where
-    n >= i.
-    '''
-    n_prob = l1_projection_to_simplex(n_weights)
-    w_n_bar = tf.cumsum(k_weights)
-    a = n_prob / w_n_bar
-    a = tf.where(tf.is_nan(a), tf.zeros_like(a), a)
-    w_i_minus_one_bar = tf.cumsum(k_weights, exclusive=True)
-    b = w_i_minus_one_bar * tf.cumsum(a, reverse=True)
-    return 1.0 - (tf.cumsum(n_prob, exclusive=True) + b)
-
-
-def prob_ith_element_is_sampled(n_weights, k_weights):
-    # TODO Getting the probability that chance selects the ith MDP is not
-    # as simple as normalizing the prob of the ith element...
-    # TODO This only works when only one k_weight is greater than zero.
-    # TODO The math for doing this properly is fairly simple, just need to
-    # code it up and test it
-    return l1_projection_to_simplex(
-        prob_ith_element_is_in_k_subset(n_weights, k_weights))
-
-
-def rank_to_element_weights(rank_weights, elements):
-    rank_weights = tf.squeeze(tf.convert_to_tensor(rank_weights))
-    elements = tf.squeeze(tf.convert_to_tensor(elements))
-
-    ranked_indices = tf.contrib.framework.argsort(
-        elements, direction='ASCENDING')
-    return tf.scatter_nd(
-        tf.expand_dims(ranked_indices, axis=1),
-        rank_weights,
-        shape=rank_weights.shape)
-
-
-def world_weights(n_weights, k_weights, evs):
-    return rank_to_element_weights(
-        prob_ith_element_is_sampled(n_weights, k_weights), evs)
-
-
-def world_utilities(utility_of_world_given_action, strategy, n_weights,
-                    k_weights):
-    evs = tf.matmul(strategy, utility_of_world_given_action, transpose_a=True)
-    p = tf.expand_dims(
-        world_weights(n_weights, k_weights, tf.squeeze(evs)), axis=1)
-    return tf.matmul(utility_of_world_given_action, p)
+from tf_kofn_robust_policy_optimization.robust import \
+    prob_ith_element_is_sampled
+from tf_kofn_robust_policy_optimization.robust.contextual_kofn import \
+    ContextualKofnGame
 
 
 def kofn_ev(evs, weights):
@@ -103,71 +50,6 @@ class DeterministicKofnGameTemplate(object):
 
     def __str__(self):
         return self.label() + ' template'
-
-
-class ContextualKofnGame(object):
-    world_idx = -1
-    context_idx = 0
-    action_idx = 1
-
-    def __init__(self,
-                 mixture_constraint_weights,
-                 u,
-                 strat,
-                 context_weights=None):
-        self.mixture_constraint_weights = tf.convert_to_tensor(
-            mixture_constraint_weights)
-        self.u = tf.convert_to_tensor(u)
-        self.strat = tf.convert_to_tensor(strat)
-
-        assert self.u.shape[self.world_idx].value == self.num_worlds()
-        assert self.u.shape[self.context_idx].value == self.num_contexts()
-
-        assert u.shape[self.action_idx].value == self.num_actions()
-
-        self.policy_weighted_action_values = self.u * tf.expand_dims(
-            self.strat, axis=self.world_idx)
-        self.context_evs = tf.reduce_sum(
-            self.policy_weighted_action_values, axis=self.action_idx)
-        assert self.context_evs.shape[
-            self.world_idx].value == self.num_worlds()
-        assert self.context_evs.shape[
-            self.context_idx].value == self.num_contexts()
-        assert len(self.context_evs.shape) == 2
-
-        weighted_context_evs = self.context_evs
-        if context_weights is not None:
-            context_weights = tf.convert_to_tensor(context_weights)
-            context_weights = tf.reshape(context_weights,
-                                         [self.num_contexts(), 1])
-            weighted_context_evs *= context_weights
-
-        self.evs = tf.reduce_mean(weighted_context_evs, axis=self.context_idx)
-        assert self.evs.shape[self.world_idx].value == self.num_worlds()
-
-        self.k_weights = rank_to_element_weights(
-            self.mixture_constraint_weights, self.evs)
-
-        self.root_ev = tf.reduce_sum(self.evs * self.k_weights)
-
-        shape = [1] * len(u.shape)
-        shape[self.world_idx] = self.num_worlds()
-        self.kofn_utility = tf.reduce_sum(
-            u * tf.reshape(self.k_weights, shape), axis=self.world_idx)
-
-        assert self.kofn_utility.shape[
-            self.context_idx].value == self.num_contexts()
-        assert self.kofn_utility.shape[
-            self.action_idx].value == self.num_actions()
-
-    def num_contexts(self):
-        return self.strat.shape[self.context_idx].value
-
-    def num_actions(self):
-        return self.strat.shape[self.action_idx].value
-
-    def num_worlds(self):
-        return self.mixture_constraint_weights.shape[0].value
 
 
 class UncertainRewardDiscountedContinuingKofnGame(object):

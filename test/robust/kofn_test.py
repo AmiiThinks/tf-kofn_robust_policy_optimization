@@ -4,6 +4,7 @@ try:
 except:
     pass
 import numpy as np
+from tf_kofn_robust_policy_optimization.robust import world_weights
 import tf_kofn_robust_policy_optimization.robust.kofn as patient
 from tf_kofn_robust_policy_optimization.pr_mdp import \
     pr_mdp_rollout, pr_mdp_evs
@@ -13,88 +14,6 @@ class KofnTest(tf.test.TestCase):
     def setUp(self):
         tf.set_random_seed(42)
         np.random.seed(42)
-
-    def test_rank_to_element_weights(self):
-        weights = patient.rank_to_element_weights([0.1, 0.7, 0.2],
-                                                  [-1.0, -2.0, -3.0])
-        self.assertAllClose([0.2, 0.7, 0.1], weights)
-
-    def test_prob_ith_element_is_in_k_subset(self):
-        n_weights = [1, 0.0]
-        k_weights = [1, 0.0]
-        self.assertAllEqual(
-            [1, 0.0],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [0.0, 1.0]
-        k_weights = [0.0, 1.0]
-        self.assertAllEqual(
-            [1.0, 1.0],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [0.0, 1.0]
-        k_weights = [1.0, 1.0]
-        self.assertAllEqual(
-            [1.0, 0.5],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [1.0, 1.0]
-        k_weights = [1.0, 1.0]
-        self.assertAllEqual(
-            [1.0, 0.25],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [1.0, 2.0]
-        k_weights = [1.0, 1.0]
-        self.assertAllClose(
-            [1.0, 1 / 3.0],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [1.0, 2.0]
-        k_weights = [2.0, 1.0]
-        self.assertAllClose(
-            [1.0, 2 / 9.0],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [1.0, 2.0, 1.0]
-        k_weights = [2.0, 1.0, 0.0]
-        self.assertAllClose(
-            [1.0, 3 / 12.0, 0],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [1.0, 2.0, 1.0]
-        k_weights = [2.0, 1.0, 0.1]
-        self.assertAllClose(
-            [
-                1.0,
-                2 / 4.0 * 1 / 3.0 + 1 / 4.0 * 1.1 / 3.1,
-                1 / 4.0 * 0.1 / 3.1
-            ],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
-
-        n_weights = [1.0, 2.0, 1.0, 3.0]
-        k_weights = [2.0, 1.0, 0.1, 0.7]
-        self.assertAllClose(
-            [
-                1.0,
-                (
-                    2 / 7.0 * 1 / 3.0 +
-                    1 / 7.0 * 1.1 / 3.1 +
-                    3 / 7.0 * 1.8 / 3.8
-                ),
-                1 / 7.0 * 0.1 / 3.1 + 3 / 7.0 * 0.8 / 3.8,
-                3 / 7.0 * 0.7 / 3.8
-            ],
-            patient.prob_ith_element_is_in_k_subset(n_weights, k_weights)
-        )  # yapf:disable
 
     def test_bind(self):
         horizon = 2
@@ -153,7 +72,7 @@ class KofnTest(tf.test.TestCase):
         ]  # yapf:disable
 
         evs = pr_mdp_evs(horizon, chance_prob_sequences, reward_models, strat)
-        mdp_weights = patient.world_weights(n_weights, k_weights, evs)
+        mdp_weights = world_weights(n_weights, k_weights, evs)
         kofn_ev = patient.kofn_ev(evs, mdp_weights)
 
         self.assertAllClose([12.0361805, 12.0361805], evs)
