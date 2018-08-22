@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tf_contextual_prediction_with_expert_advice import utility
 from tf_kofn_robust_policy_optimization.robust import rank_to_element_weights
-from tf_kofn_robust_policy_optimization import InputIterator
 
 
 class ContextualKofnGame(object):
@@ -80,9 +79,6 @@ class ContextualKofnTrainer(object):
     @property
     def t(self):
         return int(self._t.numpy())
-
-    def start(self, input_generator):
-        return InputIterator(self.step, input_generator)
 
     def game_evs(self, inputs):
         rewards = self.reward_generator(inputs)
