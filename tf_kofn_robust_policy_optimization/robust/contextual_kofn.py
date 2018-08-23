@@ -98,12 +98,7 @@ class ContextualKofnTrainer(object):
                     inputs=inputs,
                     policy=policy)
             losses.append(loss)
-
-            grad_and_vars = zip(
-                tape.gradient(loss, learner.model.variables),
-                learner.model.variables
-            )  # yapf:disable
-            learner.apply(grad_and_vars)
+            learner.apply_gradients(loss, tape)
         self._t.assign_add(1)
         return losses
 
