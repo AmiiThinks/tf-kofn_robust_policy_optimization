@@ -83,7 +83,7 @@ class ContextualKofnTrainer(object):
     def game_evs(self, inputs):
         rewards = self.reward_generator(inputs)
         return tf.stack([
-            self._game_ev(rewards, learner(inputs)).root_ev
+            self._eval_game(rewards, learner(inputs)).root_ev
             for learner in self.learners
         ])
 
@@ -94,7 +94,8 @@ class ContextualKofnTrainer(object):
             with tf.GradientTape() as tape:
                 policy = learner(inputs)
                 loss = learner.loss(
-                    tf.stop_gradient(self._game_ev(rewards, policy)),
+                    tf.stop_gradient(
+                        self._eval_game(rewards, policy).kofn_utility),
                     inputs=inputs,
                     policy=policy)
             losses.append(loss)
@@ -115,7 +116,7 @@ class ContextualKofnTrainer(object):
             ])
             return evs, test_evs
 
-    def _game_ev(self, rewards, policy):
+    def _eval_game(self, rewards, policy):
         return ContextualKofnGame(
             tf.squeeze(self.template.prob_ith_element_is_sampled), rewards,
-            policy).kofn_utility
+            policy)
