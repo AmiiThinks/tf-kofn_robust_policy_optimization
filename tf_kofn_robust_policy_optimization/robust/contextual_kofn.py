@@ -101,7 +101,7 @@ class ContextualKofnTrainer(object):
                     inputs=inputs,
                     policy=policy)
             losses.append(loss)
-            evs.append(utility(policy, action_utilities))
+            evs.append(tf.reduce_mean(utility(policy, action_utilities)))
             learner.apply_gradients(loss, tape)
         self._t.assign_add(1)
         return losses, evs
