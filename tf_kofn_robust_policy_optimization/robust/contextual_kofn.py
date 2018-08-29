@@ -90,18 +90,21 @@ class ContextualKofnTrainer(object):
     def step(self, inputs):
         rewards = self.reward_generator(inputs)
         losses = []
+        evs = []
         for learner in self.learners:
             with tf.GradientTape() as tape:
                 policy = learner(inputs)
+                action_utilities = self._eval_game(rewards,
+                                                   policy).kofn_utility
                 loss = learner.loss(
-                    tf.stop_gradient(
-                        self._eval_game(rewards, policy).kofn_utility),
+                    tf.stop_gradient(action_utilities),
                     inputs=inputs,
                     policy=policy)
             losses.append(loss)
+            evs.append(utility(policy, action_utilities))
             learner.apply_gradients(loss, tape)
         self._t.assign_add(1)
-        return losses
+        return losses, evs
 
     def evaluate(self, inputs, test_rewards=None):
         evs = self.game_evs(inputs)
