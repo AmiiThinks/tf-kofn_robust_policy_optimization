@@ -1,6 +1,7 @@
 import tensorflow as tf
-from tf_contextual_prediction_with_expert_advice import utility
 from tf_kofn_robust_policy_optimization.robust import rank_to_element_weights
+from tf_kofn_robust_policy_optimization.robust.kofn import \
+    UncertainRewardKofnTrainer
 
 
 class ContextualKofnGame(object):
@@ -68,58 +69,7 @@ class ContextualKofnGame(object):
         return self.mixture_constraint_weights.shape[0].value
 
 
-class ContextualKofnTrainer(object):
-    def __init__(self, template, reward_generator, *learners):
-        self.template = template
-        self._t = tf.train.get_or_create_global_step()
-        self._t.assign(0)
-        self.reward_generator = reward_generator
-        self.learners = learners
-
-    @property
-    def t(self):
-        return int(self._t.numpy())
-
-    def game_evs(self, inputs):
-        rewards = self.reward_generator(inputs)
-        return tf.stack([
-            self._eval_game(rewards, learner(inputs)).root_ev
-            for learner in self.learners
-        ])
-
-    def step(self, inputs):
-        rewards = self.reward_generator(inputs)
-        losses = []
-        evs = []
-        for learner in self.learners:
-            with tf.GradientTape() as tape:
-                policy = learner(inputs)
-                action_utilities = self._eval_game(rewards,
-                                                   policy).kofn_utility
-                loss = learner.loss(
-                    tf.stop_gradient(action_utilities),
-                    inputs=inputs,
-                    policy=policy)
-            losses.append(loss)
-            evs.append(tf.reduce_mean(utility(policy, action_utilities)))
-            learner.apply_gradients(loss, tape)
-        self._t.assign_add(1)
-        return losses, evs
-
-    def evaluate(self, inputs, test_rewards=None):
-        evs = self.game_evs(inputs)
-        test_evs = []
-
-        if test_rewards is None:
-            return evs
-        else:
-            test_evs = tf.stack([
-                tf.reduce_mean(utility(learner.policy(inputs), test_rewards))
-                for learner in self.learners
-            ])
-            return evs, test_evs
-
+class ContextualKofnTrainer(UncertainRewardKofnTrainer):
     def _eval_game(self, rewards, policy):
-        return ContextualKofnGame(
-            tf.squeeze(self.template.prob_ith_element_is_sampled), rewards,
-            policy)
+        return ContextualKofnGame(self.prob_ith_element_is_sampled, rewards,
+                                  policy)

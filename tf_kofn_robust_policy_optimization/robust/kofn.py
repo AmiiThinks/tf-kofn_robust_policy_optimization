@@ -1,10 +1,7 @@
 import tensorflow as tf
-from tf_kofn_robust_policy_optimization.discounted_mdp import \
-    dual_action_value_policy_evaluation_op
+from tf_contextual_prediction_with_expert_advice import utility
 from tf_kofn_robust_policy_optimization.robust import \
     prob_ith_element_is_sampled
-from tf_kofn_robust_policy_optimization.robust.contextual_kofn import \
-    ContextualKofnGame
 
 
 def kofn_ev(evs, weights):
@@ -52,90 +49,58 @@ class DeterministicKofnGameTemplate(object):
         return self.label() + ' template'
 
 
-class UncertainRewardDiscountedContinuingKofnGame(object):
-    world_idx = ContextualKofnGame.world_idx
-    state_idx = ContextualKofnGame.context_idx
-    action_idx = ContextualKofnGame.action_idx
-    successor_state_idx = action_idx + 1
-
-    def __init__(self,
-                 mixture_constraint_weights,
-                 root_op,
-                 transition_model_op,
-                 reward_models_op,
-                 policy,
-                 gamma=0.9,
-                 threshold=1e-15,
-                 max_num_iterations=-1):
-        self.mixture_constraint_weights = tf.convert_to_tensor(
-            mixture_constraint_weights)
-        self.root_op = tf.convert_to_tensor(root_op)
-        self.transition_model_op = tf.convert_to_tensor(transition_model_op)
-        self.reward_models_op = tf.convert_to_tensor(reward_models_op)
-        self.policy = tf.convert_to_tensor(policy)
-
-        self.gamma = gamma
-        self.threshold = threshold
-        self.max_num_iterations = max_num_iterations
-
-        assert (self.reward_models_op.shape[self.world_idx].value ==
-                self.num_worlds())
-
-        assert (self.reward_models_op.shape[self.state_idx].value ==
-                self.num_states())
-        assert (self.transition_model_op.shape[self.state_idx].value ==
-                self.num_states())
-        assert (self.transition_model_op.shape[self.successor_state_idx].value
-                == self.num_states())
-
-        assert (self.reward_models_op.shape[self.action_idx].value ==
-                self.num_actions())
-        assert (self.transition_model_op.shape[self.action_idx].value ==
-                self.num_actions())
-
-        self.action_values = dual_action_value_policy_evaluation_op(
-            self.transition_model_op,
-            self.policy,
-            self.reward_models_op,
-            gamma=gamma,
-            threshold=threshold,
-            max_num_iterations=max_num_iterations)
-        assert self.action_values.shape[
-            self.state_idx].value == self.num_states()
-        assert self.action_values.shape[
-            self.action_idx].value == self.num_actions()
-        assert self.action_values.shape[
-            self.world_idx].value == self.num_worlds()
-
-        self.contextual_kofn_game = ContextualKofnGame(
-            self.mixture_constraint_weights, self.action_values, self.policy,
-            self.root_op)
+class UncertainRewardKofnTrainer(object):
+    def __init__(self, template, reward_generator, *learners):
+        self.template = template
+        self._t = tf.train.get_or_create_global_step()
+        self._t.assign(0)
+        self.reward_generator = reward_generator
+        self.learners = learners
+        self.prob_ith_element_is_sampled = tf.squeeze(
+            self.template.prob_ith_element_is_sampled)
 
     @property
-    def state_values(self):
-        self.state_values = self.contextual_kofn_game.context_evs
+    def t(self):
+        return int(self._t.numpy())
 
-    @property
-    def evs(self):
-        return self.contextual_kofn_game.evs
+    def game_evs(self, inputs):
+        rewards = self.reward_generator(inputs)
+        return tf.stack([
+            self._eval_game(rewards, learner(inputs)).root_ev
+            for learner in self.learners
+        ])
 
-    @property
-    def k_weights(self):
-        return self.contextual_kofn_game.k_weights
+    def step(self, inputs):
+        rewards = self.reward_generator(inputs)
+        losses = []
+        evs = []
+        for learner in self.learners:
+            with tf.GradientTape() as tape:
+                policy = learner(inputs)
+                action_utilities = self._eval_game(rewards,
+                                                   policy).kofn_utility
+                loss = learner.loss(
+                    tf.stop_gradient(action_utilities),
+                    inputs=inputs,
+                    policy=policy)
+            losses.append(loss)
+            evs.append(tf.reduce_mean(utility(policy, action_utilities)))
+            learner.apply_gradients(loss, tape)
+        self._t.assign_add(1)
+        return losses, evs
 
-    @property
-    def root_ev(self):
-        return self.contextual_kofn_game.root_ev
+    def evaluate(self, inputs, test_rewards=None):
+        evs = self.game_evs(inputs)
+        test_evs = []
 
-    @property
-    def kofn_utility(self):
-        return self.contextual_kofn_game.kofn_utility
+        if test_rewards is None:
+            return evs
+        else:
+            test_evs = tf.stack([
+                tf.reduce_mean(utility(learner.policy(inputs), test_rewards))
+                for learner in self.learners
+            ])
+            return evs, test_evs
 
-    def num_states(self):
-        return self.root_op.shape[self.state_idx].value
-
-    def num_actions(self):
-        return self.policy.shape[self.action_idx].value
-
-    def num_worlds(self):
-        return self.mixture_constraint_weights.shape[0].value
+    def _eval_game(self, rewards, policy):
+        raise NotImplementedError('Override')

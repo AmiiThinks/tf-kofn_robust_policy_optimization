@@ -3,7 +3,7 @@ try:
     tf.enable_eager_execution()
 except:
     pass
-from tf_kofn_robust_policy_optimization.robust.kofn import \
+from tf_kofn_robust_policy_optimization.robust.uncertain_reward_discounted_continuing_kofn import \
     UncertainRewardDiscountedContinuingKofnGame
 from tf_kofn_robust_policy_optimization.utils.tensor import normalized
 
