@@ -9,6 +9,14 @@ class ContextualKofnGame(object):
     context_idx = 0
     action_idx = 1
 
+    @classmethod
+    def environment(cls, mixture_constraint_weights, sample_rewards, **kwargs):
+        def play_game(policy):
+            return cls(mixture_constraint_weights, sample_rewards(), policy,
+                       **kwargs).kofn_utility
+
+        return play_game
+
     def __init__(self,
                  mixture_constraint_weights,
                  u,

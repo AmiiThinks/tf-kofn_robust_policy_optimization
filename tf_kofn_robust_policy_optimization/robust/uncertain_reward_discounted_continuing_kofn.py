@@ -13,6 +13,16 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
     action_idx = ContextualKofnGame.action_idx
     successor_state_idx = action_idx + 1
 
+    @classmethod
+    def environment(cls, mixture_constraint_weights, root_probs,
+                    transition_model, sample_rewards, **kwargs):
+        def play_game(policy):
+            return cls(
+                mixture_constraint_weights, root_probs, transition_model,
+                sample_rewards(), policy, **kwargs).kofn_utility
+
+        return play_game
+
     def __init__(self,
                  mixture_constraint_weights,
                  root_op,
