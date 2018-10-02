@@ -181,6 +181,45 @@ class ContextualKofnTest(tf.test.TestCase):
                 utilities
             )  # yapf:disable
 
+    def test_batched_strategies_and_utilities(self):
+        n = 5
+        num_actions = 3
+
+        utility_of_instance_given_action = np.random.normal(
+            size=[2, 1, num_actions, n]).astype('float32')
+
+        strategy = np.random.uniform(size=[2, 1, num_actions]).astype('float32')
+        strategy /= tf.reduce_sum(strategy, axis=-1, keepdims=True)
+
+        with self.test_session():
+            game_template = DeterministicKofnGameTemplate(1, n)
+            kofn_utility = ContextualKofnGame(
+                game_template.prob_ith_element_is_sampled,
+                utility_of_instance_given_action, strategy).kofn_utility
+
+            assert len(kofn_utility.shape) == 3
+            assert kofn_utility.shape[0].value == 2
+            assert kofn_utility.shape[1].value == 1
+            assert kofn_utility.shape[2].value == num_actions
+
+            utilities = tf.reduce_mean(kofn_utility, axis=1)
+
+            self.assertAllClose(
+                [
+                    [
+                        -0.2341533750295639,
+                        0.5425600409507751,
+                        -1.7249178886413574
+                    ],
+                    [
+                        -1.0128311,
+                        -0.2257763,
+                        -1.1509936
+                    ]
+                ],
+                utilities
+            )  # yapf:disable
+
 
 if __name__ == '__main__':
     tf.test.main()
