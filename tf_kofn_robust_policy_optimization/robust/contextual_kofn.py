@@ -25,9 +25,12 @@ class ContextualKofnGame(object):
                  context_weights=None):
         self.mixture_constraint_weights = tf.convert_to_tensor(
             mixture_constraint_weights)
-        self.u = tf.expand_dims(tf.convert_to_tensor(u), axis=0)
-        self.strat = tf.convert_to_tensor(strat)
 
+        self.u = tf.convert_to_tensor(u)
+        while len(self.u.shape) < 4:
+            self.u = tf.expand_dims(self.u, axis=0)
+
+        self.strat = tf.convert_to_tensor(strat)
         while len(self.strat.shape) < 3:
             self.strat = tf.expand_dims(self.strat, axis=0)
 
@@ -39,8 +42,6 @@ class ContextualKofnGame(object):
             self.u * tf.expand_dims(self.strat, axis=self.world_idx))
         self.context_evs = tf.reduce_sum(
             self.policy_weighted_action_values, axis=self.action_idx)
-        assert (
-            self.context_evs.shape[self.batch_idx].value == self.batch_size())
         assert (
             self.context_evs.shape[self.world_idx].value == self.num_worlds())
         assert (self.context_evs.shape[self.context_idx].value ==
@@ -89,7 +90,8 @@ class ContextualKofnGame(object):
                 [self.num_contexts(), self.num_actions()])
 
     def batch_size(self):
-        return self.strat.shape[self.batch_idx].value
+        return max(self.u.shape[self.batch_idx].value,
+                   self.strat.shape[self.batch_idx].value)
 
     def num_contexts(self):
         return self.strat.shape[self.context_idx].value
