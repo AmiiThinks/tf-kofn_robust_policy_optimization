@@ -35,14 +35,20 @@ def prob_ith_element_is_sampled(n_weights, k_weights):
 
 def rank_to_element_weights(rank_weights, elements):
     rank_weights = tf.squeeze(tf.convert_to_tensor(rank_weights))
-    elements = tf.squeeze(tf.convert_to_tensor(elements))
-
-    ranked_indices = tf.contrib.framework.argsort(
-        elements, direction='ASCENDING')
-    return tf.scatter_nd(
-        tf.expand_dims(ranked_indices, axis=1),
-        rank_weights,
-        shape=rank_weights.shape)
+    elements = tf.convert_to_tensor(elements)
+    _, ranked_indices = tf.nn.top_k(
+        -elements, elements.shape[-1].value, sorted=True)
+    if len(elements.shape) < 2:
+        return tf.manip.scatter_nd(
+            tf.expand_dims(ranked_indices, axis=-1), rank_weights,
+            rank_weights.shape)
+    else:
+        return tf.stack([
+            tf.manip.scatter_nd(
+                tf.expand_dims(ranked_indices[i], axis=-1),
+                rank_weights, rank_weights.shape)
+            for i in range(ranked_indices.shape[0].value)
+        ])
 
 
 def world_weights(n_weights, k_weights, evs):

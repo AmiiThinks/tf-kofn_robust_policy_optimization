@@ -8,9 +8,9 @@ from tf_kofn_robust_policy_optimization.robust.kofn import \
 
 
 class UncertainRewardDiscountedContinuingKofnGame(object):
-    world_idx = ContextualKofnGame.world_idx
-    state_idx = ContextualKofnGame.context_idx
-    action_idx = ContextualKofnGame.action_idx
+    world_idx = -1
+    state_idx = world_idx + 1
+    action_idx = state_idx + 1
     successor_state_idx = action_idx + 1
 
     @classmethod
