@@ -62,3 +62,10 @@ def world_utilities(utility_of_world_given_action, strategy, n_weights,
     p = tf.expand_dims(
         world_weights(n_weights, k_weights, tf.squeeze(evs)), axis=1)
     return tf.matmul(utility_of_world_given_action, p)
+
+
+def deterministic_kofn_weights(k, n):
+    return tf.scatter_nd(
+        tf.expand_dims(tf.range(k), axis=1),
+        tf.constant(1.0 / k, shape=[k]),
+        shape=[n])

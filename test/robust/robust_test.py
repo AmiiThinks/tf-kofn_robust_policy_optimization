@@ -12,6 +12,13 @@ class RobustTest(tf.test.TestCase):
         tf.set_random_seed(42)
         np.random.seed(42)
 
+    def test_deterministic_kofn_weights(self):
+        n = 5
+        for k in range(1, n):
+            x = np.zeros([n])
+            x[:k] = 1.0 / k
+            self.assertAllClose(x, patient.deterministic_kofn_weights(k, n))
+
     def test_rank_to_element_weights(self):
         weights = patient.rank_to_element_weights([0.1, 0.7, 0.2],
                                                   [-1.0, -2.0, -3.0])
