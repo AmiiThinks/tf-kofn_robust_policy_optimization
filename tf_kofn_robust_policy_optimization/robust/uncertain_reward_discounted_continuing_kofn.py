@@ -65,12 +65,12 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
             gamma=gamma,
             threshold=threshold,
             max_num_iterations=max_num_iterations)
-        assert self.action_values.shape[
-            self.state_idx].value == self.num_states()
-        assert self.action_values.shape[
-            self.action_idx].value == self.num_actions()
-        assert self.action_values.shape[
-            self.world_idx].value == self.num_worlds()
+        assert (self.action_values.shape[self.state_idx].value ==
+                self.num_states())
+        assert (self.action_values.shape[self.action_idx].value ==
+                self.num_actions())
+        assert (self.action_values.shape[self.world_idx].value ==
+                self.num_worlds())
 
         self.contextual_kofn_game = ContextualKofnGame(
             self.mixture_constraint_weights, self.action_values, self.policy,
@@ -78,7 +78,7 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
 
     @property
     def state_values(self):
-        self.state_values = self.contextual_kofn_game.context_evs
+        return self.contextual_kofn_game.context_evs
 
     @property
     def evs(self):

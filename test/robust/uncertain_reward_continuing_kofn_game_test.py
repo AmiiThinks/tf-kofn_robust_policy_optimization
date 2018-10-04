@@ -43,14 +43,14 @@ class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
             max_num_iterations=max_num_iterations)
 
         self.assertAllClose(
-            [0.05193137004971504, 0.08981878310441971, -0.07024738192558289],
+            [0.20772548, 0.35927513, -0.28098956],
             patient.evs)
 
         self.assertAllClose(
             [0.30238017439842224, 0.24195699393749237, 0.4556628465652466],
             patient.k_weights)
 
-        self.assertAllClose(0.005426, patient.root_ev)
+        self.assertAllClose(0.021704704, patient.root_ev)
 
         self.assertAllClose(
             [

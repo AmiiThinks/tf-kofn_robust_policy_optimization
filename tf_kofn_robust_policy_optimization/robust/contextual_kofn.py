@@ -48,14 +48,14 @@ class ContextualKofnGame(object):
                 self.num_contexts())
         assert len(self.context_evs.shape) == 3
 
-        weighted_context_evs = self.context_evs
         if context_weights is not None:
             context_weights = tf.convert_to_tensor(context_weights)
             context_weights = tf.reshape(context_weights,
                                          [1, self.num_contexts(), 1])
-            weighted_context_evs *= context_weights
-
-        self.evs = tf.reduce_mean(weighted_context_evs, axis=self.context_idx)
+            self.evs = tf.reduce_sum(
+                self.context_evs * context_weights, axis=self.context_idx)
+        else:
+            self.evs = tf.reduce_mean(self.context_evs, axis=self.context_idx)
         assert self.evs.shape[self.batch_idx].value == self.batch_size()
         assert self.evs.shape[self.world_idx].value == self.num_worlds()
 
