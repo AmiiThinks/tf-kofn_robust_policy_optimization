@@ -70,7 +70,7 @@ class DiscountedMdpTest(tf.test.TestCase):
         gamma = 0.9
         num_states = 3
         num_actions = 2
-        threshold = 1e-15,
+        threshold = 1e-15
         max_num_iterations = -1
 
         P = l1_projection_to_simplex(
