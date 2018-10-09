@@ -9,13 +9,16 @@ def state_action_successor_policy_evaluation_op(transitions,
                                                 policy,
                                                 gamma=0.9,
                                                 threshold=1e-15,
-                                                max_num_iterations=-1):
+                                                max_num_iterations=-1,
+                                                H_0=None):
     transitions = tf.convert_to_tensor(transitions)
     num_states = transitions.shape[0].value
     num_actions = transitions.shape[1].value
-    H_0 = tf.constant(
-        1.0 / (num_states * num_actions),
-        shape=(num_states * num_actions, num_states * num_actions))
+
+    if H_0 is None:
+        H_0 = tf.constant(
+            1.0 / (num_states * num_actions),
+            shape=(num_states * num_actions, num_states * num_actions))
 
     transitions = tf.tile(
         tf.expand_dims(transitions, axis=-1), [1, 1, 1, num_actions])
@@ -65,7 +68,7 @@ def dual_action_value_policy_evaluation_op(transitions,
     return tf.reshape(
         tf.tensordot(
             H,
-            tf.reshape(r, H.shape[0:1].concatenate(r.shape[2:])),
+            tf.reshape(r, H.shape[0:1].concatenate(extra_dims)),
             axes=[[1], [0]]) / (1.0 - gamma), shape)
 
 

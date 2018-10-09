@@ -1,6 +1,7 @@
 import tensorflow as tf
+from tensorflow.python.ops.resource_variable_ops import ResourceVariable
 from tf_kofn_robust_policy_optimization.discounted_mdp import \
-    dual_action_value_policy_evaluation_op
+    state_action_successor_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.robust.contextual_kofn import \
     ContextualKofnGame
 from tf_kofn_robust_policy_optimization.robust.kofn import \
@@ -14,14 +15,8 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
     successor_state_idx = action_idx + 1
 
     @classmethod
-    def environment(cls, mixture_constraint_weights, root_probs,
-                    transition_model, sample_rewards, **kwargs):
-        def play_game(policy):
-            return cls(
-                mixture_constraint_weights, root_probs, transition_model,
-                sample_rewards(), policy, **kwargs).kofn_utility
-
-        return play_game
+    def environment(cls, *args, **kwargs):
+        return UncertainRewardDiscountedContinuingKofnEnv(*args, **kwargs)
 
     def __init__(self,
                  mixture_constraint_weights,
@@ -31,7 +26,8 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
                  policy,
                  gamma=0.9,
                  threshold=1e-15,
-                 max_num_iterations=-1):
+                 max_num_iterations=-1,
+                 H_0=None):
         self.mixture_constraint_weights = tf.convert_to_tensor(
             mixture_constraint_weights)
         self.root_op = tf.convert_to_tensor(root_op)
@@ -58,13 +54,23 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         assert (self.transition_model_op.shape[self.action_idx].value ==
                 self.num_actions())
 
-        self.action_values = dual_action_value_policy_evaluation_op(
+        self.H = state_action_successor_policy_evaluation_op(
             self.transition_model_op,
             self.policy,
-            self.reward_models_op,
             gamma=gamma,
             threshold=threshold,
-            max_num_iterations=max_num_iterations)
+            max_num_iterations=max_num_iterations,
+            H_0=H_0)
+
+        extra_dims = self.reward_models_op.shape[2:]
+        shape = policy.shape.concatenate(extra_dims)
+        reshaped_reward_models = tf.reshape(
+            self.reward_models_op, self.H.shape[0:1].concatenate(extra_dims))
+
+        self.action_values = tf.reshape(
+            tf.tensordot(self.H, reshaped_reward_models, axes=[[1], [0]]) /
+            (1.0 - gamma), shape)
+
         assert (self.action_values.shape[self.state_idx].value ==
                 self.num_states())
         assert (self.action_values.shape[self.action_idx].value ==
@@ -104,6 +110,39 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
 
     def num_worlds(self):
         return self.mixture_constraint_weights.shape[0].value
+
+
+class UncertainRewardDiscountedContinuingKofnEnv(object):
+    def __init__(self, mixture_constraint_weights, root_probs,
+                 transition_model, sample_rewards, **kwargs):
+        self.mixture_constraint_weights = mixture_constraint_weights
+        self.root_probs = root_probs
+        self.transition_model = tf.convert_to_tensor(transition_model)
+
+        num_states = self.transition_model.shape[0].value
+        num_actions = self.transition_model.shape[1].value
+
+        self.sample_rewards = sample_rewards
+        self.H = ResourceVariable(
+            tf.constant(
+                1.0 / (num_states * num_actions),
+                shape=(num_states * num_actions, num_states * num_actions)))
+        self.game = None
+        self.kwargs = kwargs
+
+    def __call__(self, policy):
+        self.game = UncertainRewardDiscountedContinuingKofnGame(
+            self.mixture_constraint_weights,
+            self.root_probs,
+            self.transition_model,
+            self.sample_rewards(),
+            policy,
+            H_0=self.H,
+            **self.kwargs)
+        return self.game.kofn_utility
+
+    def update(self):
+        return self.H.assign(self.game.H)
 
 
 class UncertainRewardDiscountedContinuingKofnTrainer(
