@@ -89,8 +89,11 @@ def dual_state_value_policy_evaluation_op(transitions,
         gamma=gamma,
         threshold=threshold,
         max_num_iterations=max_num_iterations)
-    return (M @ tf.reduce_sum(r * policy, axis=-1, keepdims=True) /
-            (1.0 - gamma))
+    if len(r.shape) > 2:
+        M = tf.expand_dims(M, axis=-1)
+        policy = tf.expand_dims(policy, axis=-1)
+    weighted_rewards = tf.reduce_sum(r * policy, axis=1, keepdims=True)
+    return tf.tensordot(M, weighted_rewards, axes=[[1], [0]]) / (1.0 - gamma)
 
 
 def primal_action_value_policy_evaluation_op(P,
