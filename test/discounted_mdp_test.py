@@ -10,7 +10,8 @@ from tf_kofn_robust_policy_optimization.discounted_mdp import \
     primal_action_value_policy_evaluation_op, \
     dual_action_value_policy_evaluation_op, \
     generalized_policy_iteration_op, \
-    state_successor_policy_evaluation_op
+    state_successor_policy_evaluation_op, \
+    dual_state_value_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.utils.tensor import \
     normalized, \
     l1_projection_to_simplex, \
@@ -137,7 +138,7 @@ class DiscountedMdpTest(tf.test.TestCase):
         gamma = 0.9
         num_states = 3
         num_actions = 2
-        threshold = 1e-15,
+        threshold = 1e-15
         max_num_iterations = 100
 
         P = l1_projection_to_simplex(
@@ -160,13 +161,12 @@ class DiscountedMdpTest(tf.test.TestCase):
 
         mu = normalized(tf.ones([num_states, 1]))
 
-        self.assertAllClose(
-            -2.354461,
-            tf.squeeze(root_value_op(mu, Pi_1_op @ q_op)))  # yapf:disable
+        self.assertAllClose(-2.354461,
+                            tf.squeeze(root_value_op(mu, Pi_1_op @ q_op)))
 
-        Pi_5_op = matrix_to_block_matrix_op(
-            generalized_policy_iteration_op(
-                P, r, gamma=gamma, t=10, max_num_pe_iterations=lambda _: 5))
+        policy = generalized_policy_iteration_op(
+            P, r, gamma=gamma, t=10, max_num_pe_iterations=lambda _: 5)
+        Pi_5_op = matrix_to_block_matrix_op(policy)
         q_op = primal_action_value_policy_evaluation_op(
             P,
             Pi_5_op,
@@ -174,9 +174,22 @@ class DiscountedMdpTest(tf.test.TestCase):
             gamma=gamma,
             threshold=threshold,
             max_num_iterations=max_num_iterations)
+        self.assertAllClose(-2.354438,
+                            tf.squeeze(root_value_op(mu, Pi_5_op @ q_op)))
+
+        dual_state_values = dual_state_value_policy_evaluation_op(
+            tf.reshape(P, [num_states, num_actions, num_states]),
+            policy,
+            tf.reshape(r, [num_states, num_actions]),
+            gamma=gamma,
+            threshold=threshold,
+            max_num_iterations=max_num_iterations)
+
         self.assertAllClose(
             -2.354438,
-            tf.squeeze(root_value_op(mu, Pi_5_op @ q_op)))  # yapf:disable
+            tf.squeeze(root_value_op(mu, dual_state_values)),
+            rtol=1e-04,
+            atol=1e-04)
 
     def test_recover_state_distribution_from_state_action_distribution(self):
         num_states = 3

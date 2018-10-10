@@ -75,6 +75,24 @@ def dual_action_value_policy_evaluation_op(transitions,
             axes=[[1], [0]]) / (1.0 - gamma), shape)
 
 
+def dual_state_value_policy_evaluation_op(transitions,
+                                          policy,
+                                          r,
+                                          gamma=0.9,
+                                          threshold=1e-15,
+                                          max_num_iterations=-1):
+    policy = tf.convert_to_tensor(policy)
+    r = tf.convert_to_tensor(r)
+    M = state_successor_policy_evaluation_op(
+        transitions,
+        policy,
+        gamma=gamma,
+        threshold=threshold,
+        max_num_iterations=max_num_iterations)
+    return (M @ tf.reduce_sum(r * policy, axis=-1, keepdims=True) /
+            (1.0 - gamma))
+
+
 def primal_action_value_policy_evaluation_op(P,
                                              Pi,
                                              r,
