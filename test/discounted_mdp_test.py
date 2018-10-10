@@ -196,16 +196,18 @@ class DiscountedMdpTest(tf.test.TestCase):
 
         Pi_op = matrix_to_block_matrix_op(policy_op)
 
-        P = l1_projection_to_simplex(
-            tf.random_normal(shape=[num_states * num_actions, num_states]),
-            axis=1
+        transitions = tf.reshape(
+            l1_projection_to_simplex(
+                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                axis=1
+            ),
+            [num_states, num_actions, num_states]
         )  # yapf:disable
 
         # This only works when H is very close to the true state-action
         # distribution.
         H_op = state_action_successor_policy_evaluation_op(
-            tf.reshape(P, [num_states, num_actions, num_states]), policy_op,
-            gamma)
+            transitions, policy_op, gamma)
 
         A_op = tf.matmul(Pi_op, H_op)
 
@@ -220,7 +222,7 @@ class DiscountedMdpTest(tf.test.TestCase):
         self.assertAllClose(A_op, tf.matmul(M_op, Pi_op))
         self.assertAllClose(M_op,
                             state_successor_policy_evaluation_op(
-                                P, Pi_op, gamma))
+                                transitions, policy_op, gamma))
 
 
 if __name__ == '__main__':

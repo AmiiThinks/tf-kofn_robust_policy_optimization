@@ -20,14 +20,17 @@ def state_action_successor_policy_evaluation_op(transitions,
             1.0 / (num_states * num_actions),
             shape=(num_states * num_actions, num_states * num_actions))
 
-    transitions = tf.tile(
-        tf.expand_dims(transitions, axis=-1), [1, 1, 1, num_actions])
-
     policy = tf.convert_to_tensor(policy)
-    state_action_to_state_action = gamma * tf.reshape(transitions * tf.reshape(
-        policy, [1, 1] + [dim.value for dim in policy.shape]), H_0.shape)
+    state_action_to_state_action = tf.reshape(
+        tf.expand_dims(transitions, axis=-1)
+        * tf.reshape(
+            gamma * policy,
+            [1, 1] + [dim.value for dim in policy.shape]
+        ),
+        H_0.shape
+    )  # yapf:disable
 
-    shift = tf.diag(tf.constant(1 - gamma, shape=[num_states * num_actions]))
+    shift = tf.diag(tf.constant(1.0 - gamma, shape=[num_states * num_actions]))
 
     def H_dp1_op(H_d):
         return shift + state_action_to_state_action @ H_d
@@ -173,18 +176,24 @@ def associated_ops(action_weights,
     return Pi, action_values_op, state_values_op, ev_op
 
 
-def state_successor_policy_evaluation_op(P,
-                                         Pi,
+def state_successor_policy_evaluation_op(transitions,
+                                         policy,
                                          gamma=0.9,
                                          threshold=1e-15,
                                          max_num_iterations=-1):
-    P = tf.convert_to_tensor(P)
-    num_states = P.shape[1].value
+    transitions = tf.convert_to_tensor(transitions)
+    num_states = transitions.shape[0].value
     M_0 = tf.constant(1.0 / num_states, shape=(num_states, num_states))
     shift = tf.diag(tf.constant(1.0 - gamma, shape=[num_states]))
 
+    weighted_transitions = (
+        transitions * tf.expand_dims(gamma * policy, axis=-1))
+
+    state_to_state = tf.reshape(
+        tf.reduce_sum(weighted_transitions, axis=1), M_0.shape)
+
     def M_dp1_op(M_d):
-        return shift + gamma * Pi @ P @ M_d
+        return shift + state_to_state @ M_d
 
     def error_above_threshold(M_d, M_dp1):
         return tf.greater(tf.reduce_sum(tf.abs(M_dp1 - M_d)), threshold)
