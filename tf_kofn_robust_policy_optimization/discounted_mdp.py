@@ -32,7 +32,7 @@ def state_action_successor_policy_evaluation_op(transitions,
     )  # yapf:disable
 
     def H_dp1_op(H_d):
-        future_return = state_action_to_state_action @ H_d
+        future_return = H_d @ state_action_to_state_action
         return tf.linalg.set_diag(future_return,
                                   tf.diag_part(future_return) + 1.0 - gamma)
 
@@ -210,11 +210,10 @@ def state_successor_policy_evaluation_op(transitions,
     weighted_transitions = (
         transitions * tf.expand_dims(gamma * policy, axis=-1))
 
-    state_to_state = tf.reshape(
-        tf.reduce_sum(weighted_transitions, axis=1), M_0.shape)
+    state_to_state = tf.reduce_sum(weighted_transitions, axis=1)
 
     def M_dp1_op(M_d):
-        future_return = state_to_state @ M_d
+        future_return = M_d @ state_to_state
         return tf.linalg.set_diag(future_return,
                                   tf.diag_part(future_return) + 1.0 - gamma)
 

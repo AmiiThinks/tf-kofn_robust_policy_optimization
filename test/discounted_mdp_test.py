@@ -65,7 +65,7 @@ class DiscountedMdpTest(tf.test.TestCase):
             gamma,
             max_num_iterations=100)
 
-        self.assertAllClose(x_successor_matrix, patient)
+        self.assertAllClose(x_successor_matrix, patient, rtol=1e-5, atol=1e-5)
 
     def test_dual_and_primal_policy_evaluation_agree(self):
         gamma = 0.9
