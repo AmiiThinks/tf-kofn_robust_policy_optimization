@@ -42,9 +42,7 @@ class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
             gamma=discount,
             max_num_iterations=max_num_iterations)
 
-        self.assertAllClose(
-            [0.20772548, 0.35927513, -0.28098956],
-            patient.evs)
+        self.assertAllClose([0.20772548, 0.35927513, -0.28098956], patient.evs)
 
         self.assertAllClose(
             [0.30238017439842224, 0.24195699393749237, 0.4556628465652466],
@@ -59,7 +57,9 @@ class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
                 [0.6527014970779419, -0.31257206201553345],
                 [0.2731754183769226, -0.992716372013092]
             ],
-            patient.kofn_utility
+            patient.kofn_utility,
+            rtol=1e-5,
+            atol=1e-5
         )  # yapf:disable
 
 

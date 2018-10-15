@@ -30,10 +30,10 @@ def state_action_successor_policy_evaluation_op(transitions,
         H_0.shape
     )  # yapf:disable
 
-    shift = tf.diag(tf.constant(1.0 - gamma, shape=[num_states * num_actions]))
-
     def H_dp1_op(H_d):
-        return shift + state_action_to_state_action @ H_d
+        future_return = state_action_to_state_action @ H_d
+        return tf.linalg.set_diag(future_return,
+                                  tf.diag_part(future_return) + 1.0 - gamma)
 
     def error_above_threshold(H_d, H_dp1):
         return tf.greater(tf.reduce_sum(tf.abs(H_dp1 - H_d)), threshold)
@@ -205,7 +205,6 @@ def state_successor_policy_evaluation_op(transitions,
     transitions = tf.convert_to_tensor(transitions)
     num_states = transitions.shape[0].value
     M_0 = tf.constant(1.0 / num_states, shape=(num_states, num_states))
-    shift = tf.diag(tf.constant(1.0 - gamma, shape=[num_states]))
 
     weighted_transitions = (
         transitions * tf.expand_dims(gamma * policy, axis=-1))
@@ -214,7 +213,9 @@ def state_successor_policy_evaluation_op(transitions,
         tf.reduce_sum(weighted_transitions, axis=1), M_0.shape)
 
     def M_dp1_op(M_d):
-        return shift + state_to_state @ M_d
+        future_return = state_to_state @ M_d
+        return tf.linalg.set_diag(future_return,
+                                  tf.diag_part(future_return) + 1.0 - gamma)
 
     def error_above_threshold(M_d, M_dp1):
         return tf.greater(tf.reduce_sum(tf.abs(M_dp1 - M_d)), threshold)
