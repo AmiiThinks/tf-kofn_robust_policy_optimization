@@ -14,11 +14,12 @@ def state_action_successor_policy_evaluation_op(transitions,
     transitions = tf.convert_to_tensor(transitions)
     num_states = transitions.shape[0].value
     num_actions = transitions.shape[1].value
+    num_state_actions = num_states * num_actions
 
     if H_0 is None:
         H_0 = tf.constant(
-            1.0 / (num_states * num_actions),
-            shape=(num_states * num_actions, num_states * num_actions))
+            1.0 / num_state_actions,
+            shape=(num_state_actions, num_state_actions))
 
     policy = tf.convert_to_tensor(policy)
     state_action_to_state_action = tf.reshape(
