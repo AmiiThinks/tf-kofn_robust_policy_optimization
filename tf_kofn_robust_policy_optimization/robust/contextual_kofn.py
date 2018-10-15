@@ -27,12 +27,17 @@ class ContextualKofnGame(object):
             mixture_constraint_weights)
 
         self.u = tf.convert_to_tensor(u)
-        while len(self.u.shape) < 4:
-            self.u = tf.expand_dims(self.u, axis=0)
+        if len(self.u.shape) < 4:
+            extra_dims = 4 - len(self.u.shape)
+            self.u = tf.reshape(
+                self.u, [1] * extra_dims + [s.value for s in self.u.shape])
 
         self.strat = tf.convert_to_tensor(strat)
-        while len(self.strat.shape) < 3:
-            self.strat = tf.expand_dims(self.strat, axis=0)
+        if len(self.strat.shape) < 3:
+            extra_dims = 3 - len(self.strat.shape)
+            self.strat = tf.reshape(
+                self.strat,
+                [1] * extra_dims + [s.value for s in self.strat.shape])
 
         assert self.u.shape[self.world_idx].value == self.num_worlds()
         assert self.u.shape[self.context_idx].value == self.num_contexts()
