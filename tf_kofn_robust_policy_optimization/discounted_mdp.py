@@ -32,7 +32,7 @@ def state_action_successor_policy_evaluation_op(transitions,
     )  # yapf:disable
 
     def H_dp1_op(H_d):
-        future_return = H_d @ state_action_to_state_action
+        future_return = state_action_to_state_action @ H_d
         return tf.linalg.set_diag(future_return,
                                   tf.diag_part(future_return) + 1.0 - gamma)
 
