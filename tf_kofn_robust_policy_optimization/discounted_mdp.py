@@ -202,10 +202,13 @@ def state_successor_policy_evaluation_op(transitions,
                                          policy,
                                          gamma=0.9,
                                          threshold=1e-15,
-                                         max_num_iterations=-1):
+                                         max_num_iterations=-1,
+                                         M_0=None):
     transitions = tf.convert_to_tensor(transitions)
     num_states = transitions.shape[0].value
-    M_0 = tf.constant(1.0 / num_states, shape=(num_states, num_states))
+
+    if M_0 is None:
+        M_0 = tf.constant(1.0 / num_states, shape=(num_states, num_states))
 
     weighted_transitions = (
         transitions * tf.expand_dims(gamma * policy, axis=-1))
