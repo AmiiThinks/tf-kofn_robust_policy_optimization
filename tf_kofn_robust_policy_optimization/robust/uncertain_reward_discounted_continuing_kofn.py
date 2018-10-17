@@ -193,7 +193,7 @@ class UncertainRewardDiscountedContinuingKofnEvEnv(object):
         state_values = tf.tensordot(
             M, weighted_rewards, axes=[[1], [0]]) / (1.0 - self.gamma)
         kofn_evs_and_weights = KofnEvsAndWeights(
-            state_values,
+            tf.squeeze(state_values),
             self.mixture_constraint_weights,
             context_weights=self.root_probs)
         return kofn_evs_and_weights.ev
