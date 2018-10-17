@@ -78,7 +78,9 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
             tf.tensordot(
                 self.state_action_successor_rep,
                 reshaped_reward_models,
-                axes=[[1], [0]]) / (1.0 - self.gamma), shape)
+                axes=[[1], [0]]), shape)
+        if self.gamma < 1:
+            action_values = action_values / (1.0 - self.gamma)
 
         assert (action_values.shape[self.state_idx].value == self.num_states())
         assert (
@@ -190,8 +192,10 @@ class UncertainRewardDiscountedContinuingKofnEvEnv(object):
             M = tf.expand_dims(self.next_M, axis=-1)
             policy = tf.expand_dims(policy, axis=-1)
         weighted_rewards = tf.reduce_sum(r * policy, axis=1, keepdims=True)
-        state_values = tf.tensordot(
-            M, weighted_rewards, axes=[[1], [0]]) / (1.0 - self.gamma)
+        state_values = tf.tensordot(M, weighted_rewards, axes=[[1], [0]])
+
+        if self.gamma < 1:
+            state_values = state_values / (1.0 - self.gamma)
         kofn_evs_and_weights = KofnEvsAndWeights(
             tf.squeeze(state_values),
             self.mixture_constraint_weights,
