@@ -1,11 +1,14 @@
 import tensorflow as tf
 from tensorflow.python.ops.resource_variable_ops import ResourceVariable
+from tf_kofn_robust_policy_optimization import cache
 from tf_kofn_robust_policy_optimization.discounted_mdp import \
-    state_action_successor_policy_evaluation_op
+    state_action_successor_policy_evaluation_op, \
+    state_successor_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.robust.contextual_kofn import \
     ContextualKofnGame
 from tf_kofn_robust_policy_optimization.robust.kofn import \
-    UncertainRewardKofnTrainer
+    UncertainRewardKofnTrainer, \
+    KofnEvsAndWeights
 
 
 class UncertainRewardDiscountedContinuingKofnGame(object):
@@ -25,9 +28,8 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
                  reward_models_op,
                  policy,
                  gamma=0.9,
-                 threshold=1e-15,
-                 max_num_iterations=-1,
-                 H_0=None):
+                 H_0=None,
+                 **kwargs):
         self.mixture_constraint_weights = tf.convert_to_tensor(
             mixture_constraint_weights)
         self.root_op = tf.convert_to_tensor(root_op)
@@ -36,8 +38,7 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         self.policy = tf.convert_to_tensor(policy)
 
         self.gamma = gamma
-        self.threshold = threshold
-        self.max_num_iterations = max_num_iterations
+        self.kwargs = kwargs
 
         assert (self.reward_models_op.shape[self.world_idx].value ==
                 self.num_worlds())
@@ -54,33 +55,43 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         assert (self.transition_model_op.shape[self.action_idx].value ==
                 self.num_actions())
 
-        self.H = state_action_successor_policy_evaluation_op(
+        self.H_0 = H_0
+
+    @cache
+    def state_action_successor_rep(self):
+        return state_action_successor_policy_evaluation_op(
             self.transition_model_op,
             self.policy,
-            gamma=gamma,
-            threshold=threshold,
-            max_num_iterations=max_num_iterations,
-            H_0=H_0)
+            H_0=self.H_0,
+            gamma=self.gamma,
+            **self.kwargs)
 
+    @cache
+    def action_values(self):
         extra_dims = self.reward_models_op.shape[2:]
-        shape = policy.shape.concatenate(extra_dims)
+        shape = self.policy.shape.concatenate(extra_dims)
         reshaped_reward_models = tf.reshape(
-            self.reward_models_op, self.H.shape[0:1].concatenate(extra_dims))
+            self.reward_models_op,
+            self.state_action_successor_rep.shape[0:1].concatenate(extra_dims))
 
-        self.action_values = tf.reshape(
-            tf.tensordot(self.H, reshaped_reward_models, axes=[[1], [0]]) /
-            (1.0 - gamma), shape)
+        action_values = tf.reshape(
+            tf.tensordot(
+                self.state_action_successor_rep,
+                reshaped_reward_models,
+                axes=[[1], [0]]) / (1.0 - self.gamma), shape)
 
-        assert (self.action_values.shape[self.state_idx].value ==
-                self.num_states())
-        assert (self.action_values.shape[self.action_idx].value ==
-                self.num_actions())
-        assert (self.action_values.shape[self.world_idx].value ==
-                self.num_worlds())
+        assert (action_values.shape[self.state_idx].value == self.num_states())
+        assert (
+            action_values.shape[self.action_idx].value == self.num_actions())
+        assert (action_values.shape[self.world_idx].value == self.num_worlds())
 
-        self.contextual_kofn_game = ContextualKofnGame(
-            self.mixture_constraint_weights, self.action_values, self.policy,
-            self.root_op)
+        return action_values
+
+    @cache
+    def contextual_kofn_game(self):
+        return ContextualKofnGame(self.mixture_constraint_weights,
+                                  self.action_values, self.policy,
+                                  self.root_op)
 
     @property
     def state_values(self):
@@ -142,7 +153,53 @@ class UncertainRewardDiscountedContinuingKofnEnv(object):
         return self.game.kofn_utility
 
     def update(self):
-        return self.H.assign(self.game.H)
+        return self.H.assign(self.game.state_action_successor_rep)
+
+
+class UncertainRewardDiscountedContinuingKofnEvEnv(object):
+    def __init__(self,
+                 mixture_constraint_weights,
+                 root_probs,
+                 transition_model,
+                 sample_rewards,
+                 gamma=0.9,
+                 **kwargs):
+        self.mixture_constraint_weights = mixture_constraint_weights
+        self.root_probs = root_probs
+        self.transition_model = tf.convert_to_tensor(transition_model)
+
+        num_states = self.transition_model.shape[0].value
+
+        self.sample_rewards = sample_rewards
+        self.M = ResourceVariable(
+            tf.constant(1.0 / num_states, shape=(num_states, num_states)))
+        self.game = None
+        self.gamma = gamma
+        self.kwargs = kwargs
+
+    def __call__(self, policy):
+        self.next_M = state_successor_policy_evaluation_op(
+            self.transition_model,
+            policy,
+            M_0=self.M,
+            gamma=self.gamma,
+            **self.kwargs)
+
+        r = self.sample_rewards()
+        if len(r.shape) > 2:
+            M = tf.expand_dims(self.next_M, axis=-1)
+            policy = tf.expand_dims(policy, axis=-1)
+        weighted_rewards = tf.reduce_sum(r * policy, axis=1, keepdims=True)
+        state_values = tf.tensordot(
+            M, weighted_rewards, axes=[[1], [0]]) / (1.0 - self.gamma)
+        kofn_evs_and_weights = KofnEvsAndWeights(
+            state_values,
+            self.mixture_constraint_weights,
+            context_weights=self.root_probs)
+        return kofn_evs_and_weights.ev
+
+    def update(self):
+        return self.M.assign(self.next_M)
 
 
 class UncertainRewardDiscountedContinuingKofnTrainer(
