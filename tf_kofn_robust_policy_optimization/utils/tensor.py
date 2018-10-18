@@ -32,7 +32,7 @@ def normalized(v, axis=0):
     tile_dims[axis] = n
 
     z = tf.tile(tf.reduce_sum(v, axis=axis, keepdims=True), tile_dims)
-    ur = tf.constant(1.0 / tf.cast(n, tf.float32), shape=v.shape)
+    ur = tf.fill(v.shape, 1.0 / tf.cast(n, tf.float32))
     return tf.where(tf.greater(z, 0.0), v / z, ur)
 
 
