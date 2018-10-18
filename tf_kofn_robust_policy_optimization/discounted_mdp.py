@@ -168,8 +168,13 @@ def generalized_policy_iteration_op(transitions,
             max_num_iterations=max_num_pe_iterations(d),
             q_0=q)
 
+    def v(q):
+        return tf.reduce_sum(
+            transitions * tf.expand_dims(ind_max_op(q, axis=-1), axis=-1),
+            axis=1)
+
     def error_above_threshold(q_d, q_dp1):
-        return tf.reduce_sum(tf.abs(q_dp1 - q_d)) > value_threshold
+        return tf.reduce_sum(tf.abs(v(q_dp1) - v(q_d))) > value_threshold
 
     def cond(d, q_d, q_dp1):
         error_is_high = True if value_threshold is None else error_above_threshold(
