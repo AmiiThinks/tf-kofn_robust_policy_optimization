@@ -151,26 +151,40 @@ def generalized_policy_iteration_op(transitions,
                                     t=10,
                                     pi_threshold=1e-15,
                                     max_num_pe_iterations=lambda s: 1,
-                                    q_0=None):
+                                    q_0=None,
+                                    value_threshold=1e-15):
     transitions = tf.convert_to_tensor(transitions)
 
     if q_0 is None:
         q_0 = tf.zeros(transitions.shape[:2])
 
-    def next_q(s, q):
+    def next_q(d, q):
         return primal_action_value_policy_evaluation_op(
             transitions,
             ind_max_op(q, axis=-1),
             r,
             gamma=gamma,
             threshold=pi_threshold,
-            max_num_iterations=max_num_pe_iterations(s),
+            max_num_iterations=max_num_pe_iterations(d),
             q_0=q)
+
+    def error_above_threshold(q_d, q_dp1):
+        return tf.reduce_sum(tf.abs(q_dp1 - q_d)) > value_threshold
+
+    def cond(d, q_d, q_dp1):
+        error_is_high = True if value_threshold is None else error_above_threshold(
+            q_d, q_dp1)
+        return tf.logical_or(
+            tf.logical_and(tf.less(t, 1), error_is_high),
+            tf.logical_and(tf.less(d, t), error_is_high))
 
     return ind_max_op(
         tf.while_loop(
-            lambda s, _: s < t,
-            lambda s, q: [s + 1, q + alpha * (next_q(s, q) - q)], [0, q_0],
+            cond,
+            lambda d, _, q_dp1: [
+                d + 1, q_dp1, q_dp1 + alpha * (next_q(d, q_dp1) - q_dp1)
+            ],
+            [1, q_0, next_q(0, q_0)],
             parallel_iterations=1)[-1],
         axis=-1)
 
