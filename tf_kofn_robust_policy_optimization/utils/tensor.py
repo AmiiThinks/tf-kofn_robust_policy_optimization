@@ -26,6 +26,8 @@ def matrix_to_block_matrix_op(A):
 
 def normalized(v, axis=0):
     v = tf.convert_to_tensor(v)
+    if axis < 0:
+        axis = len(v.shape) + axis
     n = tf.shape(v)[axis]
     dims_shape = [tf.rank(v)]
     tile_dims = tf.maximum(

@@ -74,65 +74,64 @@ class DiscountedMdpTest(tf.test.TestCase):
         threshold = 1e-15
         max_num_iterations = -1
 
-        P = l1_projection_to_simplex(
-            tf.random_normal(shape=[num_states * num_actions, num_states]),
-            axis=1)
+        transitions = tf.reshape(
+            l1_projection_to_simplex(
+                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                axis=1
+            ),
+            [num_states, num_actions, num_states]
+        )  # yapf:disable
 
-        r = tf.random_normal(shape=[num_states * num_actions, 1])
+        r = tf.random_normal(shape=[num_states, num_actions])
 
         policy = normalized(tf.ones([num_states, num_actions]), axis=1)
-        Pi = matrix_to_block_matrix_op(policy)
 
         with self.subTest('single reward function'):
             self.assertAllClose(
                 primal_action_value_policy_evaluation_op(
-                    P,
-                    Pi,
+                    transitions,
+                    policy,
                     r,
                     gamma=gamma,
                     threshold=threshold,
                     max_num_iterations=max_num_iterations),
-                tf.reshape(
-                    dual_action_value_policy_evaluation_op(
-                        tf.reshape(P, [num_states, num_actions, num_states]),
-                        policy,
-                        tf.reshape(r, [num_states, num_actions]),
-                        gamma=gamma,
-                        threshold=threshold,
-                        max_num_iterations=max_num_iterations),
-                    [num_states * num_actions, 1]))
+                dual_action_value_policy_evaluation_op(
+                    transitions,
+                    policy,
+                    r,
+                    gamma=gamma,
+                    threshold=threshold,
+                    max_num_iterations=max_num_iterations))
 
         with self.subTest('two reward functions'):
             r_both = tf.stack(
-                [r, tf.random_normal(shape=[num_states * num_actions, 1])],
+                [r, tf.random_normal(shape=[num_states, num_actions])],
                 axis=-1)
 
             patient = dual_action_value_policy_evaluation_op(
-                tf.reshape(P, [num_states, num_actions, num_states]),
+                transitions,
                 policy,
-                tf.reshape(r_both, [num_states, num_actions, 2]),
+                r_both,
                 gamma=gamma,
                 threshold=threshold,
                 max_num_iterations=max_num_iterations)
 
             self.assertAllClose(
                 primal_action_value_policy_evaluation_op(
-                    P,
-                    Pi,
+                    transitions,
+                    policy,
                     r_both[:, :, 0],
                     gamma=gamma,
                     threshold=threshold,
-                    max_num_iterations=max_num_iterations),
-                tf.reshape(patient[:, :, 0], [num_states * num_actions, 1]))
+                    max_num_iterations=max_num_iterations), patient[:, :, 0])
             self.assertAllClose(
                 primal_action_value_policy_evaluation_op(
-                    P,
-                    Pi,
+                    transitions,
+                    policy,
                     r_both[:, :, 1],
                     gamma=gamma,
                     threshold=threshold,
-                    max_num_iterations=max_num_iterations),
-                tf.reshape(patient[:, :, 1], [num_states * num_actions, 1]))
+                    max_num_iterations=max_num_iterations), patient[:, :, 1])
 
     def test_gpi_value(self):
         gamma = 0.9
@@ -141,19 +140,26 @@ class DiscountedMdpTest(tf.test.TestCase):
         threshold = 1e-15
         max_num_iterations = 100
 
-        P = l1_projection_to_simplex(
-            tf.random_normal(shape=[num_states * num_actions, num_states]),
-            axis=1)
+        transitions = tf.reshape(
+            l1_projection_to_simplex(
+                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                axis=1
+            ),
+            [num_states, num_actions, num_states]
+        )  # yapf:disable
 
-        r = tf.random_normal(shape=[num_states * num_actions, 1])
+        r = tf.random_normal(shape=[num_states, num_actions])
 
-        Pi_1_op = matrix_to_block_matrix_op(
-            generalized_policy_iteration_op(
-                P, r, gamma=gamma, t=10, max_num_pe_iterations=lambda _: 1))
+        policy_1_op = generalized_policy_iteration_op(
+            transitions,
+            r,
+            gamma=gamma,
+            t=10,
+            max_num_pe_iterations=lambda _: 1)
 
         q_op = primal_action_value_policy_evaluation_op(
-            P,
-            Pi_1_op,
+            transitions,
+            policy_1_op,
             r,
             gamma=gamma,
             threshold=threshold,
@@ -161,26 +167,30 @@ class DiscountedMdpTest(tf.test.TestCase):
 
         mu = normalized(tf.ones([num_states, 1]))
 
-        self.assertAllClose(-2.354461,
-                            tf.squeeze(root_value_op(mu, Pi_1_op @ q_op)))
+        v = tf.reduce_sum(policy_1_op * q_op, axis=-1, keepdims=True)
+        self.assertAllClose(-2.354447, tf.squeeze(root_value_op(mu, v)))
 
-        policy = generalized_policy_iteration_op(
-            P, r, gamma=gamma, t=10, max_num_pe_iterations=lambda _: 5)
-        Pi_5_op = matrix_to_block_matrix_op(policy)
+        policy_5_op = generalized_policy_iteration_op(
+            transitions,
+            r,
+            gamma=gamma,
+            t=10,
+            max_num_pe_iterations=lambda _: 5)
         q_op = primal_action_value_policy_evaluation_op(
-            P,
-            Pi_5_op,
+            transitions,
+            policy_5_op,
             r,
             gamma=gamma,
             threshold=threshold,
             max_num_iterations=max_num_iterations)
-        self.assertAllClose(-2.354438,
-                            tf.squeeze(root_value_op(mu, Pi_5_op @ q_op)))
+
+        v = tf.reduce_sum(policy_5_op * q_op, axis=-1, keepdims=True)
+        self.assertAllClose(-2.354447, tf.squeeze(root_value_op(mu, v)))
 
         dual_state_values = dual_state_value_policy_evaluation_op(
-            tf.reshape(P, [num_states, num_actions, num_states]),
-            policy,
-            tf.reshape(r, [num_states, num_actions]),
+            transitions,
+            policy_5_op,
+            r,
             gamma=gamma,
             threshold=threshold,
             max_num_iterations=max_num_iterations)

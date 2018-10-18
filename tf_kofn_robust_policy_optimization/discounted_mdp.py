@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 from .utils.tensor import l1_projection_to_simplex, ind_max_op
 from .utils.tensor import \
     matrix_to_block_matrix_op as policy_block_matrix_op
@@ -103,33 +102,39 @@ def dual_state_value_policy_evaluation_op(transitions,
     return state_values
 
 
-def primal_action_value_policy_evaluation_op(P,
-                                             Pi,
+def primal_action_value_policy_evaluation_op(transitions,
+                                             policy,
                                              r,
                                              gamma=0.9,
                                              threshold=1e-15,
-                                             max_num_iterations=-1):
-    P = tf.convert_to_tensor(P)
-    num_states = P.shape[1].value
-    num_actions = int(P.shape[0].value / num_states)
-    q_0 = tf.constant(
-        np.random.normal(size=[num_states * num_actions, 1]),
-        dtype=tf.float32,
-        name='primal_action_value_policy_evaluation_op/q_0')
+                                             max_num_iterations=-1,
+                                             q_0=None):
+    transitions = tf.convert_to_tensor(transitions)
+    num_states = transitions.shape[0].value
+    num_actions = transitions.shape[1].value
+
+    if q_0 is None:
+        q_0 = tf.zeros([num_states, num_actions])
+
+    discounted_policy = gamma * policy
 
     def q_dp1_op(q_d):
-        discounted_return = gamma * P @ Pi @ q_d
+        discounted_return = tf.reduce_sum(
+            transitions * tf.reshape(
+                tf.reduce_sum(discounted_policy * q_d, axis=-1),
+                [1, 1, num_states]),
+            axis=-1)
         return r + discounted_return
 
     def error_above_threshold(q_d, q_dp1):
         return tf.reduce_sum(tf.abs(q_dp1 - q_d)) > threshold
 
     def cond(d, q_d, q_dp1):
-        error_op = error_above_threshold(q_d, q_dp1)
-        return tf.squeeze(
-            tf.logical_or(
-                tf.logical_and(max_num_iterations < 1, error_op),
-                tf.logical_and(tf.less(d, max_num_iterations), error_op)))
+        error_is_high = True if threshold is None else error_above_threshold(
+            q_d, q_dp1)
+        return tf.logical_or(
+            tf.logical_and(tf.less(max_num_iterations, 1), error_is_high),
+            tf.logical_and(tf.less(d, max_num_iterations), error_is_high))
 
     return tf.while_loop(
         cond,
@@ -139,37 +144,37 @@ def primal_action_value_policy_evaluation_op(P,
         name='primal_action_value_policy_evaluation_op/while_loop')[-1]
 
 
-def generalized_policy_iteration_op(P,
+def generalized_policy_iteration_op(transitions,
                                     r,
-                                    alpha=None,
+                                    alpha=1,
                                     gamma=0.9,
                                     t=10,
                                     pi_threshold=1e-15,
-                                    max_num_pe_iterations=lambda s: -1):
-    if alpha is None: alpha = 1.0 / t
-    num_states = P.shape[1].value
-    num_actions = int(P.shape[0].value / num_states)
-    assert (len(P.shape) == 2)
-    assert (len(r.shape) == 2)
+                                    max_num_pe_iterations=lambda s: 1,
+                                    q_0=None):
+    transitions = tf.convert_to_tensor(transitions)
+    num_states = transitions.shape[0].value
+    num_actions = transitions.shape[1].value
+
+    if q_0 is None:
+        q_0 = tf.zeros([num_states, num_actions])
 
     def next_q(s, q):
-        return tf.reshape(
-            primal_action_value_policy_evaluation_op(
-                P,
-                policy_block_matrix_op(ind_max_op(q, axis=1)),
-                r,
-                gamma=gamma,
-                threshold=pi_threshold,
-                max_num_iterations=(max_num_pe_iterations(s))),
-            shape=[num_states, num_actions])
+        return primal_action_value_policy_evaluation_op(
+            transitions,
+            ind_max_op(q, axis=-1),
+            r,
+            gamma=gamma,
+            threshold=pi_threshold,
+            max_num_iterations=max_num_pe_iterations(s),
+            q_0=q)
 
     return ind_max_op(
         tf.while_loop(
             lambda s, _: s < t,
-            lambda s, q: [s + 1, q + alpha * (next_q(s, q) - q)],
-            [0, tf.zeros([num_states, num_actions])],
+            lambda s, q: [s + 1, q + alpha * (next_q(s, q) - q)], [0, q_0],
             parallel_iterations=1)[-1],
-        axis=1)
+        axis=-1)
 
 
 def root_value_op(mu, v):
