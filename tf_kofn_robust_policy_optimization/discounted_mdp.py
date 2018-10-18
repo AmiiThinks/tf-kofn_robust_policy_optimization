@@ -146,18 +146,16 @@ def primal_action_value_policy_evaluation_op(transitions,
 
 def generalized_policy_iteration_op(transitions,
                                     r,
-                                    alpha=1,
+                                    alpha=1.0,
                                     gamma=0.9,
                                     t=10,
                                     pi_threshold=1e-15,
                                     max_num_pe_iterations=lambda s: 1,
                                     q_0=None):
     transitions = tf.convert_to_tensor(transitions)
-    num_states = transitions.shape[0].value
-    num_actions = transitions.shape[1].value
 
     if q_0 is None:
-        q_0 = tf.zeros([num_states, num_actions])
+        q_0 = tf.zeros(transitions.shape[:2])
 
     def next_q(s, q):
         return primal_action_value_policy_evaluation_op(

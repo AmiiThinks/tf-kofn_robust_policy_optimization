@@ -26,13 +26,10 @@ def matrix_to_block_matrix_op(A):
 
 def normalized(v, axis=0):
     v = tf.convert_to_tensor(v)
-    if axis < 0:
-        axis = len(v.shape) + axis
     n = tf.shape(v)[axis]
-    dims_shape = [tf.rank(v)]
-    tile_dims = tf.maximum(
-        tf.ones(shape=dims_shape, dtype=tf.int32),
-        tf.scatter_nd([[axis]], [n], shape=dims_shape))
+
+    tile_dims = [tf.ones([], dtype=tf.int32)] * len(v.shape)
+    tile_dims[axis] = n
 
     z = tf.tile(tf.reduce_sum(v, axis=axis, keepdims=True), tile_dims)
     ur = tf.constant(1.0 / tf.cast(n, tf.float32), shape=v.shape)
@@ -45,10 +42,8 @@ def l1_projection_to_simplex(v, axis=0):
 
 def ind_max_op(A, axis=0, tolerance=1e-15):
     almost_max = tf.reduce_max(A, axis=axis, keepdims=True) - tolerance
-    return l1_projection_to_simplex(
+    return normalized(
         tf.where(
-            tf.greater_equal(A, almost_max),
-            tf.ones_like(A),
-            tf.zeros_like(A)
-        ),
-        axis=axis)  # yapf:disable
+            tf.greater_equal(A, almost_max), tf.ones_like(A),
+            tf.zeros_like(A)),
+        axis=axis)

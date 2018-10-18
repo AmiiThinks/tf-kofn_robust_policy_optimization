@@ -14,8 +14,8 @@ class TensorUtilsTest(tf.test.TestCase):
 
     def test_l1_projection_to_simplex_with_negative(self):
         self.assertAllClose(
-            patient.l1_projection_to_simplex(
-                tf.constant([2.0, 8.0, -5.0])), [0.2, 0.8, 0.0])
+            patient.l1_projection_to_simplex(tf.constant([2.0, 8.0, -5.0])),
+            [0.2, 0.8, 0.0])
 
     def test_l1_projection_to_simplex_multiple_rows(self):
         v = patient.l1_projection_to_simplex(
@@ -73,6 +73,10 @@ class TensorUtilsTest(tf.test.TestCase):
                 axis=1
             )
         )  # yapf:disable
+
+        self.assertAllEqual(
+            tf.constant(1 / 5.0, shape=[500, 5]),
+            patient.ind_max_op(tf.zeros([500, 5]), axis=-1))
 
 
 if __name__ == '__main__':
