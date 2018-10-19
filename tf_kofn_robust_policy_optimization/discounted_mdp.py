@@ -16,9 +16,7 @@ def state_action_successor_policy_evaluation_op(transitions,
     num_state_actions = num_states * num_actions
 
     if H_0 is None:
-        H_0 = tf.constant(
-            1.0 / num_state_actions,
-            shape=(num_state_actions, num_state_actions))
+        H_0 = tf.eye(num_state_actions)
 
     policy = tf.convert_to_tensor(policy)
     state_action_to_state_action = tf.reshape(
@@ -236,7 +234,7 @@ def state_successor_policy_evaluation_op(transitions,
     num_states = transitions.shape[0].value
 
     if M_0 is None:
-        M_0 = tf.constant(1.0 / num_states, shape=(num_states, num_states))
+        M_0 = tf.eye(num_states)
 
     weighted_transitions = (
         transitions * tf.expand_dims(gamma * policy, axis=-1))
@@ -270,5 +268,12 @@ def state_distribution(state_successor_rep, state_probs):
     Probability of terminating in each state.
 
     |States| by 1 Tensor
+
+    Parameters
+    - state_successor_rep: |States| by |States| successor representation.
+    - state_probs: (m by) |States| vector of initial state probabilities.
     '''
-    return tf.matmul(state_successor_rep, state_probs, transpose_a=True)
+    state_probs = tf.convert_to_tensor(state_probs)
+    if len(state_probs.shape) < 2:
+        state_probs = tf.expand_dims(state_probs, axis=0)
+    return tf.matmul(state_probs, state_successor_rep)
