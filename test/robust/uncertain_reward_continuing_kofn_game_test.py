@@ -5,7 +5,7 @@ except:
     pass
 from tf_kofn_robust_policy_optimization.robust.uncertain_reward_discounted_continuing_kofn import \
     UncertainRewardDiscountedContinuingKofnGame
-from tf_kofn_robust_policy_optimization.utils.tensor import normalized
+from tf_contextual_prediction_with_expert_advice import normalized
 
 
 class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):

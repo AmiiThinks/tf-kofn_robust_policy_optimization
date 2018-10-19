@@ -4,7 +4,8 @@ try:
 except:
     pass
 import numpy as np
-from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
+from tf_contextual_prediction_with_expert_advice import \
+    l1_projection_to_simplex
 from tf_kofn_robust_policy_optimization.regret_table import RegretTable, \
     PrRegretMatchingPlus, PrRegretTable
 from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, pr_mdp_expected_value, \

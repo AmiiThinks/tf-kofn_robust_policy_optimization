@@ -12,9 +12,10 @@ from tf_kofn_robust_policy_optimization.discounted_mdp import \
     generalized_policy_iteration_op, \
     state_successor_policy_evaluation_op, \
     dual_state_value_policy_evaluation_op
-from tf_kofn_robust_policy_optimization.utils.tensor import \
+from tf_contextual_prediction_with_expert_advice import \
     normalized, \
-    l1_projection_to_simplex, \
+    l1_projection_to_simplex
+from tf_kofn_robust_policy_optimization.utils.tensor import \
     matrix_to_block_matrix_op
 
 

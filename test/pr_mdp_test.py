@@ -9,7 +9,8 @@ from tf_kofn_robust_policy_optimization.pr_mdp import \
     pr_mdp_expected_value, \
     pr_mdp_optimal_policy_and_value
 from tf_kofn_robust_policy_optimization.utils.sequence import num_pr_sequences
-from tf_kofn_robust_policy_optimization.utils.tensor import l1_projection_to_simplex
+from tf_contextual_prediction_with_expert_advice import \
+    l1_projection_to_simplex
 
 
 class PrMdpTest(tf.test.TestCase):

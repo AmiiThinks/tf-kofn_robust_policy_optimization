@@ -1,5 +1,6 @@
 import tensorflow as tf
-from ..utils.tensor import l1_projection_to_simplex
+from tf_contextual_prediction_with_expert_advice import \
+    l1_projection_to_simplex
 
 
 class InventoryMdpGenerator(object):

@@ -22,28 +22,3 @@ def matrix_to_block_matrix_op(A):
     tiled_A = tf.tile(A, [1, n])
     mask = tf.constant(block_ones(n, A.shape[1].value))
     return tiled_A * mask
-
-
-def normalized(v, axis=0):
-    v = tf.convert_to_tensor(v)
-    n = tf.shape(v)[axis]
-
-    tile_dims = [tf.ones([], dtype=tf.int32)] * len(v.shape)
-    tile_dims[axis] = n
-
-    z = tf.tile(tf.reduce_sum(v, axis=axis, keepdims=True), tile_dims)
-    ur = tf.fill(v.shape, 1.0 / tf.cast(n, tf.float32))
-    return tf.where(tf.greater(z, 0.0), v / z, ur)
-
-
-def l1_projection_to_simplex(v, axis=0):
-    return normalized(tf.maximum(0.0, v), axis=axis)
-
-
-def ind_max_op(A, axis=0, tolerance=1e-15):
-    almost_max = tf.reduce_max(A, axis=axis, keepdims=True) - tolerance
-    return normalized(
-        tf.where(
-            tf.greater_equal(A, almost_max), tf.ones_like(A),
-            tf.zeros_like(A)),
-        axis=axis)

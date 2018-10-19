@@ -1,6 +1,7 @@
 import tensorflow as tf
 from itertools import product
-from .utils.tensor import l1_projection_to_simplex
+from tf_contextual_prediction_with_expert_advice import \
+    l1_projection_to_simplex
 from .utils.sequence import num_pr_sequences, num_ir_sequences
 
 

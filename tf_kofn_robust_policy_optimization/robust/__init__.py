@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_kofn_robust_policy_optimization.utils.tensor import \
+from tf_contextual_prediction_with_expert_advice import \
     l1_projection_to_simplex
 
 

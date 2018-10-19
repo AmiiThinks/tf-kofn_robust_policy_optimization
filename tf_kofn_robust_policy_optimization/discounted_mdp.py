@@ -1,5 +1,7 @@
 import tensorflow as tf
-from .utils.tensor import l1_projection_to_simplex, ind_max_op
+from tf_contextual_prediction_with_expert_advice import \
+    l1_projection_to_simplex, \
+    indmax
 from .utils.tensor import \
     matrix_to_block_matrix_op as policy_block_matrix_op
 
@@ -159,7 +161,7 @@ def generalized_policy_iteration_op(transitions,
     def next_q(d, q):
         return primal_action_value_policy_evaluation_op(
             transitions,
-            ind_max_op(q, axis=-1),
+            indmax(q, axis=-1),
             r,
             gamma=gamma,
             threshold=pi_threshold,
@@ -168,8 +170,7 @@ def generalized_policy_iteration_op(transitions,
 
     def v(q):
         return tf.reduce_sum(
-            transitions * tf.expand_dims(ind_max_op(q, axis=-1), axis=-1),
-            axis=1)
+            transitions * tf.expand_dims(indmax(q, axis=-1), axis=-1), axis=1)
 
     def error_above_threshold(q_d, q_dp1):
         return tf.reduce_sum(tf.abs(v(q_dp1) - v(q_d))) > value_threshold
@@ -181,7 +182,7 @@ def generalized_policy_iteration_op(transitions,
             tf.logical_and(tf.less(t, 1), error_is_high),
             tf.logical_and(tf.less(d, t), error_is_high))
 
-    return ind_max_op(
+    return indmax(
         tf.while_loop(
             cond,
             lambda d, _, q_dp1: [
@@ -269,7 +270,7 @@ def state_distribution(state_successor_rep, state_probs):
 
     |States| by 1 Tensor
 
-    Parameters
+    Parameters:
     - state_successor_rep: |States| by |States| successor representation.
     - state_probs: (m by) |States| vector of initial state probabilities.
     '''
