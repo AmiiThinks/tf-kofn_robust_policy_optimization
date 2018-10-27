@@ -21,7 +21,7 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
     def environment(cls, *args, **kwargs):
         def f(policy):
             return UncertainRewardDiscountedContinuingKofnGame(
-                *args**kwargs).game.kofn_utility
+                *args, **kwargs).game.kofn_utility
 
         return f
 
@@ -144,20 +144,11 @@ class UncertainRewardDiscountedContinuingKofnEvEnv(object):
 )  # yapf:disable
 class UncertainRewardDiscountedContinuingKofnTrainer(
         UncertainRewardKofnTrainer):
-    def __init__(self,
-                 root_probs,
-                 transitions,
-                 *args,
-                 gamma=0.99,
-                 threshold=1e-10,
-                 max_num_iterations=100,
-                 **kwargs):
+    def __init__(self, root_probs, transitions, *args, gamma=0.99, **kwargs):
         super().__init__(*args, **kwargs)
         self.root_probs = root_probs
         self.transitions = transitions
         self.gamma = gamma
-        self.threshold = threshold
-        self.max_num_iterations = max_num_iterations
 
     def _eval_game(self, rewards, policy):
         return UncertainRewardDiscountedContinuingKofnGame(
@@ -166,6 +157,4 @@ class UncertainRewardDiscountedContinuingKofnTrainer(
             self.transitions,
             rewards,
             policy,
-            gamma=self.discount,
-            threshold=self.threshold,
-            max_num_iterations=self.max_num_iterations)
+            gamma=self.discount)
