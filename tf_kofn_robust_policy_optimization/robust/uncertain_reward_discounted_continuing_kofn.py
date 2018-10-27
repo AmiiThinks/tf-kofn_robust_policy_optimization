@@ -18,10 +18,20 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
     successor_state_idx = action_idx + 1
 
     @classmethod
-    def environment(cls, *args, **kwargs):
+    def environment(cls,
+                    mixture_constraint_weights,
+                    root_probs,
+                    transition_model,
+                    sample_rewards,
+                    gamma=0.9):
         def f(policy):
-            return UncertainRewardDiscountedContinuingKofnGame(
-                *args, **kwargs).game.kofn_utility
+            return cls(
+                mixture_constraint_weights,
+                root_probs,
+                transition_model,
+                sample_rewards(),
+                policy,
+                gamma=gamma).kofn_utility
 
         return f
 
