@@ -10,7 +10,8 @@ setup(
         # tensorflow or tensorflow-gpu >= v1.8
         'fire',
         'numpy',
-        'scipy'  # For environments/inventory.
+        'scipy',  # For environments/inventory.
+        'deprecation'
     ],
     tests_require=['pytest', 'pytest-cov'],
     setup_requires=['pytest-runner'],

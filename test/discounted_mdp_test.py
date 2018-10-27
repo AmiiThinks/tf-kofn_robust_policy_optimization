@@ -25,9 +25,9 @@ class DiscountedMdpTest(tf.test.TestCase):
         tf.set_random_seed(10)
 
     def test_row_normalize_op(self):
-        root = tf.reshape(normalized(tf.constant([1, 2, 3.0])), [3, 1])
-        v = tf.reshape(tf.constant([1.0, 2, 3]), [3, 1])
-        self.assertAllClose([[2.3333335]], root_value_op(root, v))
+        root = normalized([1, 2, 3.0])
+        v = [1.0, 2, 3]
+        self.assertAllClose(2.3333335, root_value_op(root, v))
 
     def test_state_action_successor_policy_evaluation_op(self):
         gamma = 0.9
@@ -97,12 +97,7 @@ class DiscountedMdpTest(tf.test.TestCase):
                     threshold=threshold,
                     max_num_iterations=max_num_iterations),
                 dual_action_value_policy_evaluation_op(
-                    transitions,
-                    policy,
-                    r,
-                    gamma=gamma,
-                    threshold=threshold,
-                    max_num_iterations=max_num_iterations))
+                    transitions, policy, r, gamma=gamma))
 
         with self.subTest('two reward functions'):
             r_both = tf.stack(
@@ -110,12 +105,7 @@ class DiscountedMdpTest(tf.test.TestCase):
                 axis=-1)
 
             patient = dual_action_value_policy_evaluation_op(
-                transitions,
-                policy,
-                r_both,
-                gamma=gamma,
-                threshold=threshold,
-                max_num_iterations=max_num_iterations)
+                transitions, policy, r_both, gamma=gamma)
 
             self.assertAllClose(
                 primal_action_value_policy_evaluation_op(
@@ -166,10 +156,10 @@ class DiscountedMdpTest(tf.test.TestCase):
             threshold=threshold,
             max_num_iterations=max_num_iterations)
 
-        mu = normalized(tf.ones([num_states, 1]))
+        mu = normalized(tf.ones([num_states]))
 
-        v = tf.reduce_sum(policy_1_op * q_op, axis=-1, keepdims=True)
-        self.assertAllClose(-2.354447, tf.squeeze(root_value_op(mu, v)))
+        v = tf.reduce_sum(policy_1_op * q_op, axis=-1)
+        self.assertAllClose(-2.354447, root_value_op(mu, v))
 
         policy_5_op = generalized_policy_iteration_op(
             transitions,
@@ -185,20 +175,15 @@ class DiscountedMdpTest(tf.test.TestCase):
             threshold=threshold,
             max_num_iterations=max_num_iterations)
 
-        v = tf.reduce_sum(policy_5_op * q_op, axis=-1, keepdims=True)
-        self.assertAllClose(-2.354447, tf.squeeze(root_value_op(mu, v)))
+        v = tf.reduce_sum(policy_5_op * q_op, axis=-1)
+        self.assertAllClose(-2.354447, root_value_op(mu, v))
 
         dual_state_values = dual_state_value_policy_evaluation_op(
-            transitions,
-            policy_5_op,
-            r,
-            gamma=gamma,
-            threshold=threshold,
-            max_num_iterations=max_num_iterations)
+            transitions, policy_5_op, r, gamma=gamma)
 
         self.assertAllClose(
             -2.354438,
-            tf.squeeze(root_value_op(mu, dual_state_values)),
+            root_value_op(mu, dual_state_values),
             rtol=1e-04,
             atol=1e-04)
 
@@ -244,9 +229,9 @@ class DiscountedMdpTest(tf.test.TestCase):
         sum_M_op = tf.reduce_sum(M_op, axis=1)
         self.assertAllClose(tf.ones_like(sum_M_op), sum_M_op)
         self.assertAllClose(A_op, tf.matmul(M_op, Pi_op))
-        self.assertAllClose(M_op,
-                            state_successor_policy_evaluation_op(
-                                transitions, policy_op, gamma))
+        self.assertAllClose(
+            M_op, (1.0 - gamma) * state_successor_policy_evaluation_op(
+                transitions, policy_op, gamma))
 
 
 if __name__ == '__main__':
