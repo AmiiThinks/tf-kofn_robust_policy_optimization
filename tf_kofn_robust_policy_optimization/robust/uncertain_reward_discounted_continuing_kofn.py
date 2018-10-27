@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.python.ops.resource_variable_ops import ResourceVariable
 from tf_kofn_robust_policy_optimization import cache
 from tf_kofn_robust_policy_optimization.discounted_mdp import \
-    state_action_successor_policy_evaluation_op, \
+    dual_action_value_policy_evaluation_op, \
     state_successor_policy_evaluation_op
 from tf_kofn_robust_policy_optimization.robust.contextual_kofn import \
     ContextualKofnGame
@@ -27,9 +27,7 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
                  transition_model_op,
                  reward_models_op,
                  policy,
-                 gamma=0.9,
-                 H_0=None,
-                 **kwargs):
+                 gamma=0.9):
         self.mixture_constraint_weights = tf.convert_to_tensor(
             mixture_constraint_weights)
         self.root_op = tf.convert_to_tensor(root_op)
@@ -38,7 +36,6 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         self.policy = tf.convert_to_tensor(policy)
 
         self.gamma = gamma
-        self.kwargs = kwargs
 
         assert (self.reward_models_op.shape[self.world_idx].value ==
                 self.num_worlds())
@@ -55,32 +52,13 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         assert (self.transition_model_op.shape[self.action_idx].value ==
                 self.num_actions())
 
-        self.H_0 = H_0
-
-    @cache
-    def state_action_successor_rep(self):
-        return state_action_successor_policy_evaluation_op(
-            self.transition_model_op,
-            self.policy,
-            H_0=self.H_0,
-            gamma=self.gamma,
-            **self.kwargs)
-
     @cache
     def action_values(self):
-        extra_dims = self.reward_models_op.shape[2:]
-        shape = self.policy.shape.concatenate(extra_dims)
-        reshaped_reward_models = tf.reshape(
+        action_values = dual_action_value_policy_evaluation_op(
+            self.transition_model_op,
+            self.policy,
             self.reward_models_op,
-            self.state_action_successor_rep.shape[0:1].concatenate(extra_dims))
-
-        action_values = tf.reshape(
-            tf.tensordot(
-                self.state_action_successor_rep,
-                reshaped_reward_models,
-                axes=[[1], [0]]), shape)
-        if self.gamma < 1:
-            action_values = action_values / (1.0 - self.gamma)
+            gamma=self.gamma)
 
         assert (action_values.shape[self.state_idx].value == self.num_states())
         assert (

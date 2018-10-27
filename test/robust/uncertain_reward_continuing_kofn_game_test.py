@@ -31,7 +31,6 @@ class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
             shape=[num_states, num_actions, num_worlds])
         policy = normalized(tf.random_uniform([num_states, num_actions]))
         discount = 0.99
-        max_num_iterations = 100
 
         patient = UncertainRewardDiscountedContinuingKofnGame(
             mixture_constraint_weights,
@@ -39,8 +38,7 @@ class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
             transition_model,
             reward_models,
             policy,
-            gamma=discount,
-            max_num_iterations=max_num_iterations)
+            gamma=discount)
 
         self.assertAllClose([0.20772548, 0.35927513, -0.28098956], patient.evs)
 
