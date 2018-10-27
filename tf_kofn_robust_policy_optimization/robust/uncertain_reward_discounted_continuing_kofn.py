@@ -128,7 +128,7 @@ class UncertainRewardDiscountedContinuingKofnEvEnv(object):
                 self.transition_model,
                 policy,
                 tf.transpose(self.sample_rewards(), [2, 0, 1]),
-                gamma=self.gamma), [1, 2, 0])
+                gamma=self.gamma))
 
         kofn_evs_and_weights = KofnEvsAndWeights(
             tf.squeeze(state_values),
