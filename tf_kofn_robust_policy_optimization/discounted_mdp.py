@@ -7,76 +7,35 @@ from .utils.tensor import \
     matrix_to_block_matrix_op as policy_block_matrix_op
 
 
-def state_action_successor_policy_evaluation_op(transitions,
-                                                policy,
-                                                gamma=0.9,
-                                                threshold=1e-15,
-                                                max_num_iterations=-1,
-                                                H_0=None):
-    transitions = tf.convert_to_tensor(transitions)
-    num_states = transitions.shape[0].value
-    num_actions = transitions.shape[1].value
-    num_state_actions = num_states * num_actions
-
-    if H_0 is None:
-        H_0 = tf.eye(num_state_actions)
-
-    policy = tf.convert_to_tensor(policy)
-    state_action_to_state_action = tf.reshape(
-        tf.expand_dims(transitions, axis=-1)
-        * tf.reshape(
-            gamma * policy,
-            [1, 1] + [dim.value for dim in policy.shape]
-        ),
-        H_0.shape
-    )  # yapf:disable
-
-    def H_dp1_op(H_d):
-        future_return = state_action_to_state_action @ H_d
-        return tf.linalg.set_diag(future_return,
-                                  tf.diag_part(future_return) + 1.0 - gamma)
-
-    def error_above_threshold(H_d, H_dp1):
-        return tf.greater(tf.reduce_sum(tf.abs(H_dp1 - H_d)), threshold)
-
-    def cond(d, H_d, H_dp1):
-        error_is_high = True if threshold is None else error_above_threshold(
-            H_d, H_dp1)
-        return tf.logical_or(
-            tf.logical_and(tf.less(max_num_iterations, 1), error_is_high),
-            tf.logical_and(tf.less(d, max_num_iterations), error_is_high))
-
-    return tf.while_loop(
-        cond,
-        lambda d, _, H_d: [d + 1, H_d, H_dp1_op(H_d)],
-        [1, H_0, H_dp1_op(H_0)],
-        parallel_iterations=1)[-1]
-
-
 def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
+    '''r may have an initial batch dimension.'''
     transitions = tf.convert_to_tensor(transitions)
     policy = tf.convert_to_tensor(policy)
     r = tf.convert_to_tensor(r)
 
     v = gamma * dual_state_value_policy_evaluation_op(
         transitions, policy, r, gamma=gamma)
-    v = tf.reshape(v, [1, 1] + [dim.value for dim in v.shape])
-    if len(v.shape) > len(transitions.shape):
-        transitions = tf.reshape(
-            transitions, [dim.value for dim in transitions.shape] + [1] *
-            (len(v.shape) - len(transitions.shape)))
-    return r + tf.reduce_sum(transitions * v, axis=2)
+    has_batch_dim = len(v.shape) > 1
+    if has_batch_dim:
+        transitions = tf.expand_dims(transitions, 0)
+    v = tf.expand_dims(
+        tf.expand_dims(v, int(has_batch_dim)), int(has_batch_dim))
+    return r + tf.reduce_sum(transitions * v, axis=-1)
 
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
+    '''r may have an initial batch dimension.'''
     policy = tf.convert_to_tensor(policy)
     r = tf.convert_to_tensor(r)
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
-    if len(r.shape) > 2:
-        M = tf.expand_dims(M, axis=-1)
-        policy = tf.expand_dims(policy, axis=-1)
-    weighted_rewards = tf.expand_dims(tf.reduce_sum(r * policy, axis=1), 0)
-    return tf.reduce_sum(M * weighted_rewards, axis=1)
+
+    has_batch_dim = len(r.shape) > 2
+    if has_batch_dim:
+        M = tf.expand_dims(M, axis=0)
+        policy = tf.expand_dims(policy, axis=0)
+    weighted_rewards = tf.expand_dims(
+        tf.reduce_sum(r * policy, axis=-1), int(has_batch_dim))
+    return tf.reduce_sum(M * weighted_rewards, axis=-1)
 
 
 def primal_action_value_policy_evaluation_op(transitions,
@@ -170,14 +129,6 @@ def generalized_policy_iteration_op(transitions,
         axis=-1)
 
 
-def root_value_op(mu, v):
-    '''
-    If mu and v are two dimensional, this function assumes the first
-    dimension of both mu and v is a batch dimension.
-    '''
-    return tf.reduce_sum(mu * v, axis=-1)
-
-
 def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
     '''
     The discounted unnormalized successor representation for the given
@@ -187,8 +138,8 @@ def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
     the row-normalized version.
     '''
     weighted_transitions = transitions * tf.expand_dims(policy, axis=-1)
-    negative_state_to_state = (
-        -gamma * tf.reduce_sum(weighted_transitions, axis=1))
+    state_to_state = tf.reduce_sum(weighted_transitions, axis=1)
+    negative_state_to_state = -gamma * state_to_state
     eye_minus_gamma_state_to_state = tf.linalg.set_diag(
         negative_state_to_state, 1.0 + tf.diag_part(negative_state_to_state))
 
@@ -221,7 +172,7 @@ def value_ops(Pi, root_op, transition_model_op, reward_model_op, **kwargs):
         transition_model_op, Pi, reward_model_op, **kwargs)
 
     state_values_op = Pi @ action_values_op
-    ev_op = root_value_op(root_op, state_values_op)
+    ev_op = tf.reduce_sum(root_op * state_values_op, axis=-1)
 
     return action_values_op, state_values_op, ev_op
 
