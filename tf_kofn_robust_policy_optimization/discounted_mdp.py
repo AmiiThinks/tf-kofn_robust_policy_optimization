@@ -20,8 +20,7 @@ def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
         transitions, policy, r, gamma=gamma)
 
     transitions = tf.reshape(transitions, [num_state_actions, num_states])
-    return r + tf.reshape(
-        tf.tensordot(v, transitions, axes=[[-1], [-1]]), r.shape)
+    return r + tf.reshape(tf.tensordot(v, transitions, axes=[-1, -1]), r.shape)
 
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
@@ -30,13 +29,10 @@ def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     r = tf.convert_to_tensor(r)
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
 
-    has_batch_dim = len(r.shape) > 2
-    if has_batch_dim:
-        M = tf.expand_dims(M, axis=0)
+    if len(r.shape) > 2:
         policy = tf.expand_dims(policy, axis=0)
-    weighted_rewards = tf.expand_dims(
-        tf.reduce_sum(r * policy, axis=-1), int(has_batch_dim))
-    return tf.reduce_sum(M * weighted_rewards, axis=-1)
+    weighted_rewards = tf.reduce_sum(r * policy, axis=-1)
+    return tf.tensordot(weighted_rewards, M, axes=[-1, -1])
 
 
 def primal_action_value_policy_evaluation_op(transitions,
