@@ -12,15 +12,16 @@ def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     transitions = tf.convert_to_tensor(transitions)
     policy = tf.convert_to_tensor(policy)
     r = tf.convert_to_tensor(r)
+    num_states = transitions.shape[0].value
+    num_actions = transitions.shape[1].value
+    num_state_actions = num_states * num_actions
 
     v = gamma * dual_state_value_policy_evaluation_op(
         transitions, policy, r, gamma=gamma)
-    has_batch_dim = len(v.shape) > 1
-    if has_batch_dim:
-        transitions = tf.expand_dims(transitions, 0)
-    v = tf.expand_dims(
-        tf.expand_dims(v, int(has_batch_dim)), int(has_batch_dim))
-    return r + tf.reduce_sum(transitions * v, axis=-1)
+
+    transitions = tf.reshape(transitions, [num_state_actions, num_states])
+    return r + tf.reshape(
+        tf.transpose(tf.tensordot(transitions, v, axes=[[-1], [-1]])), r.shape)
 
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
