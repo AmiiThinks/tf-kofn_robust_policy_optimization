@@ -9,18 +9,9 @@ from .utils.tensor import \
 
 def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
-    transitions = tf.convert_to_tensor(transitions)
-    policy = tf.convert_to_tensor(policy)
-    r = tf.convert_to_tensor(r)
-    num_states = transitions.shape[0].value
-    num_actions = transitions.shape[1].value
-    num_state_actions = num_states * num_actions
-
     v = gamma * dual_state_value_policy_evaluation_op(
         transitions, policy, r, gamma=gamma)
-
-    transitions = tf.reshape(transitions, [num_state_actions, num_states])
-    return r + tf.reshape(tf.tensordot(v, transitions, axes=[-1, -1]), r.shape)
+    return r + tf.tensordot(v, transitions, axes=[-1, -1])
 
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
