@@ -1,11 +1,11 @@
 import tensorflow as tf
 from tf_contextual_prediction_with_expert_advice import utility
 from tf_kofn_robust_policy_optimization import cache
-from tf_kofn_robust_policy_optimization.utils.tensor import \
-    standardize_batch_dim
 from tf_kofn_robust_policy_optimization.robust import \
     prob_ith_element_is_sampled, \
     rank_to_element_weights
+from tf_kofn_robust_policy_optimization.utils.tensor import \
+    standardize_batch_dim
 
 
 def kofn_ev(evs, weights):
@@ -24,15 +24,6 @@ def kofn_regret_update(chance_prob_sequence_list, reward_models, weights,
     return regret_update
 
 
-def ensure_batch_context_world_shape(tensor):
-    tensor = tf.convert_to_tensor(tensor)
-    if len(tensor.shape) == 1:
-        tensor = tf.reshape(tensor, [1, tensor.shape[0].value, 1])
-    elif len(tensor.shape) == 2:
-        tensor = tf.expand_dims(tensor, axis=0)
-    return tensor
-
-
 class KofnEvsAndWeights(object):
     def __init__(self, context_values, opponent, context_weights=None):
         '''
@@ -43,37 +34,40 @@ class KofnEvsAndWeights(object):
             on each world after they are ranked.
         - context_weights: |S| vector of weights for each context.
         '''
-        self.context_values_given_world = ensure_batch_context_world_shape(
-            context_values)
+        self.context_values_given_world = context_values
         self.opponent = opponent
         self.context_weights = context_weights
 
         if context_weights is None:
             self.ev_given_world = tf.reduce_mean(
-                self.context_values_given_world, axis=1)
+                self.context_values_given_world, axis=int(self.has_batch_dim))
         else:
-            self.context_weights = ensure_batch_context_world_shape(
-                context_weights)
-            self.ev_given_world = tf.reduce_sum(
-                self.context_values_given_world * self.context_weights, axis=1)
+            self.context_weights = context_weights
+            self.ev_given_world = tf.tensordot(
+                self.context_values_given_world,
+                self.context_weights,
+                axes=[int(self.has_batch_dim), 0])
         '''m X n weighting of the unranked worlds.'''
         self.world_weights = rank_to_element_weights(opponent,
                                                      self.ev_given_world)
 
     @property
-    def batch_size(self):
-        return self.context_values_given_world.shape[0].value
-
-    @property
-    def num_contexts(self):
-        return self.context_values_given_world.shape[1].value
+    def has_batch_dim(self):
+        return len(self.context_values_given_world.shape) > 2
 
     @cache
     def context_values(self):
-        return tf.reduce_sum(
-            self.context_values_given_world * tf.expand_dims(
-                self.world_weights, axis=1),
-            axis=-1)
+        if self.has_batch_dim:
+            return tf.einsum(
+                'bsw,bw->bs',
+                self.context_values_given_world,
+                self.world_weights,
+                axes=[-1, -1])
+        else:
+            return tf.tensordot(
+                self.context_values_given_world,
+                self.world_weights,
+                axes=[-1, -1])
 
     @cache
     def ev(self):
@@ -81,13 +75,21 @@ class KofnEvsAndWeights(object):
 
 
 def kofn_action_values(action_values_given_world, world_weights):
-    (action_values_given_world,
-     world_weights), has_batch_dim = standardize_batch_dim(
-         (action_values_given_world, 3), (world_weights, 1))
+    action_values_given_world = tf.convert_to_tensor(action_values_given_world)
+    world_weights = tf.convert_to_tensor(world_weights)
 
+    avgw_has_batch = len(action_values_given_world.shape) > 3
+    ww_has_batch = len(world_weights.shape) > 1
+    has_batch_dim = avgw_has_batch or ww_has_batch
     if has_batch_dim:
-        return tf.einsum('bsaw,bw->bsa', action_values_given_world,
-                         world_weights)
+        if avgw_has_batch and ww_has_batch:
+            (action_values_given_world,
+             world_weights), _ = standardize_batch_dim(
+                 (action_values_given_world, 3), (world_weights, 1))
+        return tf.einsum('{},{}->bsa'.format('bsaw'
+                                             if avgw_has_batch else 'saw', 'bw'
+                                             if ww_has_batch else 'w'),
+                         action_values_given_world, world_weights)
     else:
         return tf.tensordot(
             action_values_given_world, world_weights, axes=[-1, -1])

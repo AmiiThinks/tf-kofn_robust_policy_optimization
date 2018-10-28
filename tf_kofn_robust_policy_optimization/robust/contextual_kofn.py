@@ -29,75 +29,50 @@ class ContextualKofnGame(object):
             mixture_constraint_weights)
 
         self.u = tf.convert_to_tensor(u)
-        if len(self.u.shape) < 4:
-            extra_dims = 4 - len(self.u.shape)
-            self.u = tf.reshape(
-                self.u, [1] * extra_dims + [s.value for s in self.u.shape])
+        u_has_batch = len(self.u.shape) > 3
 
         self.strat = tf.convert_to_tensor(strat)
-        if len(self.strat.shape) < 3:
-            extra_dims = 3 - len(self.strat.shape)
-            self.strat = tf.reshape(
-                self.strat,
-                [1] * extra_dims + [s.value for s in self.strat.shape])
+        strat_has_batch = len(self.strat.shape) > 2
 
-        assert self.u.shape[self.world_idx].value == self.num_worlds()
-        assert self.u.shape[self.context_idx].value == self.num_contexts()
-        assert self.u.shape[self.action_idx].value == self.num_actions()
+        result_string = 'sw'
+        if u_has_batch:
+            u_string = 'bsaw'
+            result_string = 'bsw'
+        else:
+            u_string = 'saw'
 
-        self.batch_size = max(self.u.shape[self.batch_idx].value,
-                              self.strat.shape[self.batch_idx].value)
+        if strat_has_batch:
+            strat_string = 'bsa'
+            result_string = 'bsw'
+        else:
+            strat_string = 'sa'
 
-        self.policy_weighted_action_values = (
-            self.u * tf.expand_dims(self.strat, axis=self.world_idx))
-        self.context_evs = tf.reduce_sum(
-            self.policy_weighted_action_values, axis=self.action_idx)
-        assert (
-            self.context_evs.shape[self.world_idx].value == self.num_worlds())
-        assert (self.context_evs.shape[self.context_idx].value ==
-                self.num_contexts())
-        assert len(self.context_evs.shape) == 3
+        self.context_evs = tf.einsum('{},{}->{}'.format(
+            u_string, strat_string, result_string), self.u, self.strat)
 
         self.kofn_evs_and_weights = KofnEvsAndWeights(
             self.context_evs,
             self.mixture_constraint_weights,
             context_weights=context_weights)
 
-        if self.one_in_batch():
-            self.u = tf.reshape(
-                self.u,
-                [self.num_contexts(),
-                 self.num_actions(),
-                 self.num_worlds()])
-
     def one_in_batch(self):
         return self.batch_size < 2
 
     @cache
     def kofn_utility(self):
-        kofn_utility = kofn_action_values(self.u, self.k_weights)
-        assert (kofn_utility.shape[self.context_idx - self.one_in_batch()]
-                .value == self.num_contexts())
-        assert (kofn_utility.shape[self.action_idx - self.one_in_batch()].value
-                == self.num_actions())
-        return kofn_utility
+        return kofn_action_values(self.u, self.k_weights)
 
     @cache
     def k_weights(self):
-        return (tf.squeeze(self.kofn_evs_and_weights.world_weights)
-                if self.one_in_batch() else
-                self.kofn_evs_and_weights.world_weights)
+        return self.kofn_evs_and_weights.world_weights
 
     @cache
     def evs(self):
-        return (tf.squeeze(self.kofn_evs_and_weights.ev_given_world)
-                if self.one_in_batch() else
-                self.kofn_evs_and_weights.ev_given_world)
+        return self.kofn_evs_and_weights.ev_given_world
 
     @cache
     def root_ev(self):
-        return (tf.squeeze(self.kofn_evs_and_weights.ev)
-                if self.one_in_batch() else self.kofn_evs_and_weights.ev)
+        return self.kofn_evs_and_weights.ev
 
     def num_contexts(self):
         return self.strat.shape[self.context_idx].value

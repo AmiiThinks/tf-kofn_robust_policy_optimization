@@ -18,8 +18,9 @@ def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
     if len(r.shape) > 2:
-        policy = tf.expand_dims(policy, axis=0)
-    weighted_rewards = tf.reduce_sum(r * policy, axis=-1)
+        weighted_rewards = tf.einsum('bsa,sa->bs', r, policy)
+    else:
+        weighted_rewards = tf.reduce_sum(r * policy, axis=-1)
     return tf.tensordot(weighted_rewards, M, axes=[-1, -1])
 
 
@@ -123,8 +124,6 @@ def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
     If gamma is less than 1, multiplying each element by 1 - gamma recovers
     the row-normalized version.
     '''
-    transitions = tf.convert_to_tensor(transitions)
-    policy = tf.convert_to_tensor(policy)
     negative_state_to_state = tf.einsum('san,sa->sn', transitions,
                                         -gamma * policy)
     eye_minus_gamma_state_to_state = tf.linalg.set_diag(
@@ -145,8 +144,10 @@ def state_distribution(state_successor_rep, state_probs):
     '''
     state_probs = tf.convert_to_tensor(state_probs)
     if len(state_probs.shape) < 2:
-        state_probs = tf.expand_dims(state_probs, axis=0)
-    return tf.matmul(state_probs, state_successor_rep)
+        return tf.matmul(
+            tf.expand_dims(state_probs, axis=0), state_successor_rep)[0]
+    else:
+        return tf.matmul(state_probs, state_successor_rep)
 
 
 @deprecated(
