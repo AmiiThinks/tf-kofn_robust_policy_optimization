@@ -21,7 +21,7 @@ def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
 
     transitions = tf.reshape(transitions, [num_state_actions, num_states])
     return r + tf.reshape(
-        tf.transpose(tf.tensordot(transitions, v, axes=[[-1], [-1]])), r.shape)
+        tf.tensordot(v, transitions, axes=[[-1], [-1]]), r.shape)
 
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
