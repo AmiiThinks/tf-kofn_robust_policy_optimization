@@ -123,6 +123,8 @@ def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
     If gamma is less than 1, multiplying each element by 1 - gamma recovers
     the row-normalized version.
     '''
+    transitions = tf.convert_to_tensor(transitions)
+    policy = tf.convert_to_tensor(policy)
     negative_state_to_state = tf.einsum('san,sa->sn', transitions,
                                         -gamma * policy)
     eye_minus_gamma_state_to_state = tf.linalg.set_diag(
