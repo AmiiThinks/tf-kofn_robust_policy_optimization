@@ -80,16 +80,38 @@ class KofnEvsAndWeights(object):
 
 def kofn_action_values(action_values_given_world, world_weights):
     action_values_given_world = tf.convert_to_tensor(action_values_given_world)
-    if len(world_weights.shape) < 2:
-        world_weights = tf.reshape(world_weights, [1] *
-                                   (len(action_values_given_world.shape) - 1) +
-                                   [action_values_given_world.shape[-1].value])
+    world_weights = tf.convert_to_tensor(world_weights)
+
+    ww_has_batch_dim = len(world_weights.shape) > 1
+    ww_batch_size = world_weights.shape[0].value
+
+    avgw_has_batch_dim = len(action_values_given_world.shape) > 3
+    avgw_batch_size = action_values_given_world.shape[0].value
+
+    has_batch_dim = ww_has_batch_dim or avgw_has_batch_dim
+    if has_batch_dim:
+        if not ww_has_batch_dim:
+            world_weights = tf.expand_dims(world_weights, 0)
+            if avgw_has_batch_dim:
+                world_weights = tf.tile(world_weights, [avgw_batch_size, 1])
+        if not avgw_has_batch_dim:
+            action_values_given_world = tf.expand_dims(
+                action_values_given_world, 0)
+            if ww_has_batch_dim:
+                action_values_given_world = tf.tile(action_values_given_world,
+                                                    [ww_batch_size, 1, 1, 1])
+        if ww_has_batch_dim and avgw_has_batch_dim:
+            world_weights = tf.tile(
+                world_weights, [max(1, avgw_batch_size // ww_batch_size), 1])
+            action_values_given_world = tf.tile(
+                action_values_given_world,
+                [max(1, ww_batch_size // avgw_batch_size), 1, 1, 1])
+
+        return tf.einsum('bsaw,bw->bsa', action_values_given_world,
+                         world_weights)
     else:
-        world_weights = tf.reshape(world_weights, [
-            world_weights.shape[0].value, 1, 1,
-            action_values_given_world.shape[-1].value
-        ])
-    return tf.reduce_sum(action_values_given_world * world_weights, axis=-1)
+        return tf.tensordot(
+            action_values_given_world, world_weights, axes=[-1, -1])
 
 
 class DeterministicKofnGameTemplate(object):
