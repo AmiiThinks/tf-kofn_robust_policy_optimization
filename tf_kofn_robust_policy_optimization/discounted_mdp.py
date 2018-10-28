@@ -3,8 +3,9 @@ from deprecation import deprecated
 from tf_contextual_prediction_with_expert_advice import \
     l1_projection_to_simplex, \
     indmax
-from .utils.tensor import \
-    matrix_to_block_matrix_op as policy_block_matrix_op
+from tf_kofn_robust_policy_optimization.utils.tensor import \
+    matrix_to_block_matrix_op as policy_block_matrix_op, \
+    standardize_batch_dim
 
 
 def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
@@ -16,13 +17,10 @@ def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
-    policy = tf.convert_to_tensor(policy)
-    r = tf.convert_to_tensor(r)
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
-
-    if len(r.shape) > 2:
-        policy = tf.expand_dims(policy, axis=0)
-    weighted_rewards = tf.reduce_sum(r * policy, axis=-1)
+    (r, policy), has_batch_dim = standardize_batch_dim((r, 2), (policy, 2))
+    weighted_rewards = tf.einsum('bsa,bsa->bs'
+                                 if has_batch_dim else 'sa,sa->s', r, policy)
     return tf.tensordot(weighted_rewards, M, axes=[-1, -1])
 
 
