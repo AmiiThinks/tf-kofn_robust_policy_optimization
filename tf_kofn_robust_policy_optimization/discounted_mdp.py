@@ -2,10 +2,9 @@ import tensorflow as tf
 from deprecation import deprecated
 from tf_contextual_prediction_with_expert_advice import \
     l1_projection_to_simplex, \
-    indmax
+    greedy_policy
 from tf_kofn_robust_policy_optimization.utils.tensor import \
-    matrix_to_block_matrix_op as policy_block_matrix_op, \
-    standardize_batch_dim
+    matrix_to_block_matrix_op as policy_block_matrix_op
 
 
 def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
@@ -18,9 +17,9 @@ def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
-    (r, policy), has_batch_dim = standardize_batch_dim((r, 2), (policy, 2))
-    weighted_rewards = tf.einsum('bsa,bsa->bs'
-                                 if has_batch_dim else 'sa,sa->s', r, policy)
+    if len(r.shape) > 2:
+        policy = tf.expand_dims(policy, axis=0)
+    weighted_rewards = tf.reduce_sum(r * policy, axis=-1)
     return tf.tensordot(weighted_rewards, M, axes=[-1, -1])
 
 
@@ -34,6 +33,7 @@ def primal_action_value_policy_evaluation_op(transitions,
     transitions = tf.convert_to_tensor(transitions)
     num_states = transitions.shape[0].value
     num_actions = transitions.shape[1].value
+    P = tf.reshape(transitions, [num_states * num_actions, num_states])
 
     if q_0 is None:
         q_0 = tf.zeros([num_states, num_actions])
@@ -41,11 +41,9 @@ def primal_action_value_policy_evaluation_op(transitions,
     discounted_policy = gamma * policy
 
     def q_dp1_op(q_d):
-        discounted_return = tf.reduce_sum(
-            transitions * tf.reshape(
-                tf.reduce_sum(discounted_policy * q_d, axis=-1),
-                [1, 1, num_states]),
-            axis=-1)
+        discounted_return = tf.reshape(
+            P @ tf.reduce_sum(discounted_policy * q_d, axis=-1, keepdims=True),
+            [num_states, num_actions])
         return r + discounted_return
 
     def error_above_threshold(q_d, q_dp1):
@@ -76,6 +74,10 @@ def generalized_policy_iteration_op(transitions,
                                     q_0=None,
                                     value_threshold=1e-15):
     transitions = tf.convert_to_tensor(transitions)
+    num_states = transitions.shape[0].value
+    num_actions = transitions.shape[1].value
+    num_state_actions = num_actions * num_states
+    P = tf.reshape(transitions, [num_states, num_state_actions])
 
     if q_0 is None:
         q_0 = tf.zeros(transitions.shape[:2])
@@ -83,7 +85,7 @@ def generalized_policy_iteration_op(transitions,
     def next_q(d, q):
         return primal_action_value_policy_evaluation_op(
             transitions,
-            indmax(q, axis=-1),
+            greedy_policy(q),
             r,
             gamma=gamma,
             threshold=pi_threshold,
@@ -91,8 +93,7 @@ def generalized_policy_iteration_op(transitions,
             q_0=q)
 
     def v(q):
-        return tf.reduce_sum(
-            transitions * tf.expand_dims(indmax(q, axis=-1), axis=-1), axis=1)
+        return P @ tf.reshape(greedy_policy(q), [num_state_actions, 1])
 
     def error_above_threshold(q_d, q_dp1):
         return tf.reduce_sum(tf.abs(v(q_dp1) - v(q_d))) > value_threshold
@@ -104,15 +105,14 @@ def generalized_policy_iteration_op(transitions,
             tf.logical_and(tf.less(t, 1), error_is_high),
             tf.logical_and(tf.less(d, t), error_is_high))
 
-    return indmax(
+    return greedy_policy(
         tf.while_loop(
             cond,
             lambda d, _, q_dp1: [
                 d + 1, q_dp1, q_dp1 + alpha * (next_q(d, q_dp1) - q_dp1)
             ],
             [1, q_0, next_q(0, q_0)],
-            parallel_iterations=1)[-1],
-        axis=-1)
+            parallel_iterations=1)[-1])
 
 
 def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
@@ -123,9 +123,8 @@ def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
     If gamma is less than 1, multiplying each element by 1 - gamma recovers
     the row-normalized version.
     '''
-    weighted_transitions = transitions * tf.expand_dims(policy, axis=-1)
-    state_to_state = tf.reduce_sum(weighted_transitions, axis=1)
-    negative_state_to_state = -gamma * state_to_state
+    negative_state_to_state = tf.einsum('san,sa->sn', transitions,
+                                        -gamma * policy)
     eye_minus_gamma_state_to_state = tf.linalg.set_diag(
         negative_state_to_state, 1.0 + tf.diag_part(negative_state_to_state))
 
