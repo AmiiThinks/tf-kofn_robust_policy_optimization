@@ -9,14 +9,15 @@ from tf_kofn_robust_policy_optimization.utils.tensor import \
 
 def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
-    v = gamma * dual_state_value_policy_evaluation_op(
+    v = dual_state_value_policy_evaluation_op(
         transitions, policy, r, gamma=gamma)
-    return r + tf.tensordot(v, transitions, axes=[-1, -1])
+    return r + gamma * tf.tensordot(v, transitions, axes=[-1, -1])
 
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
+    r = tf.convert_to_tensor(r)
     if len(r.shape) > 2:
         weighted_rewards = tf.einsum('bsa,sa->bs', r, policy)
     else:

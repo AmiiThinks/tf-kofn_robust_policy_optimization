@@ -20,6 +20,45 @@ class DiscountedMdpTest(tf.test.TestCase):
         np.random.seed(10)
         tf.set_random_seed(10)
 
+    def test_situation_dependent_discount(self):
+        num_states = 3
+        num_actions = 2
+        transitions = tf.reshape(
+            l1_projection_to_simplex(
+                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                axis=1
+            ),
+            [num_states, num_actions, num_states]
+        )  # yapf:disable
+        policy = normalized(tf.zeros([num_states, num_actions]), axis=1)
+        rewards = [[1.0, 2], [3, 4], [5, 6]]
+
+        self.assertAllClose(
+            dual_state_value_policy_evaluation_op(transitions, policy, rewards,
+                                                  0.99),
+            [355.64996, 356.69995, 358.75452])
+
+        discounts = np.full([num_states, 1], 0.99, dtype='float32')
+        discounts[-1] = 0
+
+        self.assertAllClose(
+            dual_state_value_policy_evaluation_op(transitions, policy, rewards,
+                                                  discounts),
+            [13.126714, 17.98831, 5.5])
+
+        discounts = np.full([num_states, num_actions], 0.99, dtype='float32')
+        discounts[-1, -1] = 0
+
+        self.assertAllClose(
+            dual_state_value_policy_evaluation_op(transitions, policy, rewards,
+                                                  discounts),
+            [25.490976, 30.214983, 18.251637])
+
+        self.assertAllClose(
+            dual_action_value_policy_evaluation_op(transitions, policy,
+                                                   rewards, discounts),
+            [[30.912834, 20.06912], [32.023956, 28.406008], [30.503275, 6.]])
+
     def test_state_successor_policy_evaluation_op(self):
         num_states = 3
         num_actions = 2
