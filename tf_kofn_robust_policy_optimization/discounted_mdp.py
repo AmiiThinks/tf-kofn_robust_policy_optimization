@@ -16,6 +16,7 @@ def dual_action_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
 
 def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     '''r may have an initial batch dimension.'''
+    policy = tf.convert_to_tensor(policy)
     M = state_successor_policy_evaluation_op(transitions, policy, gamma=gamma)
     r = tf.convert_to_tensor(r)
     if len(r.shape) > 2:
