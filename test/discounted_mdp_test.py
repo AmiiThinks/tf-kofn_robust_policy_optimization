@@ -235,7 +235,7 @@ class DiscountedMdpTest(tf.test.TestCase):
         mu = normalized(tf.ones([num_states]))
 
         v = tf.reduce_sum(policy_1_op * q_op, axis=-1)
-        self.assertAllClose(-2.354447, tf.reduce_sum(mu * v))
+        self.assertAllClose(-2.354453, tf.reduce_sum(mu * v))
 
         policy_5_op = generalized_policy_iteration_op(
             transitions,
@@ -252,7 +252,7 @@ class DiscountedMdpTest(tf.test.TestCase):
             max_num_iterations=max_num_iterations)
 
         v = tf.reduce_sum(policy_5_op * q_op, axis=-1)
-        self.assertAllClose(-2.354447, tf.reduce_sum(mu * v))
+        self.assertAllClose(-2.354453, tf.reduce_sum(mu * v))
 
         dual_state_values = dual_state_value_policy_evaluation_op(
             transitions, policy_5_op, r, gamma=gamma)

@@ -25,45 +25,67 @@ def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
     return tf.tensordot(weighted_rewards, M, axes=[-1, -1])
 
 
-def primal_action_value_policy_evaluation_op(transitions,
-                                             policy,
-                                             r,
-                                             gamma=0.9,
-                                             threshold=1e-15,
-                                             max_num_iterations=-1,
-                                             q_0=None):
+def primal_state_value_on_policy_op(transitions, policy, r, discount, v=None):
     transitions = tf.convert_to_tensor(transitions)
     num_states = transitions.shape[0].value
     num_actions = transitions.shape[1].value
-    P = tf.reshape(transitions, [num_states * num_actions, num_states])
+    num_state_actions = num_states * num_actions
+    v = tf.convert_to_tensor(v)
 
-    if q_0 is None:
-        q_0 = tf.zeros([num_states, num_actions])
+    if v is None:
+        v = tf.zeros([num_states, 1])
+    if len(v.shape) < 2:
+        v = tf.expand_dims(v, -1)
+    P = tf.reshape(transitions, [num_state_actions, num_states])
 
-    discounted_policy = gamma * policy
+    return tf.reduce_sum(
+        policy * (r + discount * tf.reshape(P @ v, [num_states, num_actions])),
+        axis=-1)
 
-    def q_dp1_op(q_d):
-        discounted_return = tf.reshape(
-            P @ tf.reduce_sum(discounted_policy * q_d, axis=-1, keepdims=True),
-            [num_states, num_actions])
-        return r + discounted_return
 
-    def error_above_threshold(q_d, q_dp1):
-        return tf.reduce_sum(tf.abs(q_dp1 - q_d)) > threshold
+def primal_state_value_policy_evaluation(transitions,
+                                         policy,
+                                         r,
+                                         gamma=0.9,
+                                         threshold=1e-15,
+                                         max_num_iterations=-1,
+                                         v_0=None):
+    transitions = tf.convert_to_tensor(transitions)
+    num_states = transitions.shape[0].value
 
-    def cond(d, q_d, q_dp1):
+    if v_0 is None:
+        v_0 = tf.zeros([num_states])
+
+    def error_above_threshold(v_d, v_dp1):
+        return tf.reduce_sum(tf.abs(v_dp1 - v_d)) > threshold
+
+    def cond(d, v_d, v_dp1):
         error_is_high = True if threshold is None else error_above_threshold(
-            q_d, q_dp1)
+            v_d, v_dp1)
         return tf.logical_or(
             tf.logical_and(tf.less(max_num_iterations, 1), error_is_high),
             tf.logical_and(tf.less(d, max_num_iterations), error_is_high))
 
     return tf.while_loop(
         cond,
-        lambda d, _, q_d: [d + 1, q_d, q_dp1_op(q_d)],
-        [1, q_0, q_dp1_op(q_0)],
+        lambda d, _, v_d: [
+            d + 1,
+            v_d,
+            primal_state_value_on_policy_op(transitions, policy, r, gamma, v_d)
+        ],
+        [1, v_0, primal_state_value_on_policy_op(transitions, policy, r, gamma, v_0)],
         parallel_iterations=1,
-        name='primal_action_value_policy_evaluation_op/while_loop')[-1]
+        name='primal_state_value_policy_evaluation/while_loop')[-1]
+
+
+def primal_action_value_policy_evaluation_op(transitions,
+                                             policy,
+                                             r,
+                                             gamma=0.9,
+                                             **kwargs):
+    v = primal_state_value_policy_evaluation(
+        transitions, policy, r, gamma=gamma, **kwargs)
+    return r + gamma * tf.tensordot(v, transitions, axes=[-1, -1])
 
 
 def generalized_policy_iteration_op(transitions,
@@ -73,48 +95,45 @@ def generalized_policy_iteration_op(transitions,
                                     t=10,
                                     pi_threshold=1e-15,
                                     max_num_pe_iterations=lambda s: 1,
-                                    q_0=None,
+                                    v_0=None,
                                     value_threshold=1e-15):
-    transitions = tf.convert_to_tensor(transitions)
-    num_states = transitions.shape[0].value
-    num_actions = transitions.shape[1].value
-    num_state_actions = num_actions * num_states
-    P = tf.reshape(transitions, [num_states, num_state_actions])
+    def q(v):
+        return r + gamma * tf.tensordot(v, transitions, axes=[-1, -1])
 
-    if q_0 is None:
-        q_0 = tf.zeros(transitions.shape[:2])
-
-    def next_q(d, q):
-        return primal_action_value_policy_evaluation_op(
+    def next_v(d, v):
+        return primal_state_value_policy_evaluation(
             transitions,
-            greedy_policy(q),
+            greedy_policy(q(v)),
             r,
-            gamma=gamma,
+            gamma,
             threshold=pi_threshold,
             max_num_iterations=max_num_pe_iterations(d),
-            q_0=q)
+            v_0=v_0)
 
-    def v(q):
-        return P @ tf.reshape(greedy_policy(q), [num_state_actions, 1])
+    transitions = tf.convert_to_tensor(transitions)
+    num_states = transitions.shape[0].value
 
-    def error_above_threshold(q_d, q_dp1):
-        return tf.reduce_sum(tf.abs(v(q_dp1) - v(q_d))) > value_threshold
+    if v_0 is None:
+        v_0 = tf.zeros([num_states])
 
-    def cond(d, q_d, q_dp1):
+    def error_above_threshold(v_d, v_dp1):
+        return tf.reduce_sum(tf.abs(v_dp1 - v_d)) > value_threshold
+
+    def cond(d, v_d, v_dp1):
         error_is_high = True if value_threshold is None else error_above_threshold(
-            q_d, q_dp1)
+            v_d, v_dp1)
         return tf.logical_or(
             tf.logical_and(tf.less(t, 1), error_is_high),
             tf.logical_and(tf.less(d, t), error_is_high))
 
-    return greedy_policy(
+    return greedy_policy(q(
         tf.while_loop(
             cond,
-            lambda d, _, q_dp1: [
-                d + 1, q_dp1, q_dp1 + alpha * (next_q(d, q_dp1) - q_dp1)
+            lambda d, _, v_dp1: [
+                d + 1, v_dp1, v_dp1 + alpha * (next_v(d, v_dp1) - v_dp1)
             ],
-            [1, q_0, next_q(0, q_0)],
-            parallel_iterations=1)[-1])
+            [1, v_0, next_v(0, v_0)],
+            parallel_iterations=1)[-1]))
 
 
 def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
