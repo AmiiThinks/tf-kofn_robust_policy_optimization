@@ -6,7 +6,7 @@ from tf_kofn_robust_policy_optimization.utils import means
 class UtilsTest(tf.test.TestCase):
     def setUp(self):
         np.random.seed(42)
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
 
     def test_mean_models(self):
         a = np.random.normal(size=[3, 2]).astype('float32')

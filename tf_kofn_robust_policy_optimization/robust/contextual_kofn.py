@@ -75,13 +75,13 @@ class ContextualKofnGame(object):
         return self.kofn_evs_and_weights.ev
 
     def num_contexts(self):
-        return self.strat.shape[self.context_idx].value
+        return self.strat.shape[self.context_idx]
 
     def num_actions(self):
-        return self.strat.shape[self.action_idx].value
+        return self.strat.shape[self.action_idx]
 
     def num_worlds(self):
-        return self.mixture_constraint_weights.shape[0].value
+        return self.mixture_constraint_weights.shape[0]
 
 
 class ContextualKofnTrainer(UncertainRewardKofnTrainer):

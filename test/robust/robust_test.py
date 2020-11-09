@@ -9,7 +9,7 @@ import tf_kofn_robust_policy_optimization.robust as patient
 
 class RobustTest(tf.test.TestCase):
     def setUp(self):
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
         np.random.seed(42)
 
     def test_deterministic_kofn_weights(self):

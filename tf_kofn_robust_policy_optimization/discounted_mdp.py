@@ -28,8 +28,8 @@ def dual_state_value_policy_evaluation_op(transitions, policy, r, gamma=0.9):
 
 def primal_state_value_on_policy_op(transitions, policy, r, discount, v=None):
     transitions = tf.convert_to_tensor(transitions)
-    num_states = transitions.shape[0].value
-    num_actions = transitions.shape[1].value
+    num_states = transitions.shape[0]
+    num_actions = transitions.shape[1]
     num_state_actions = num_states * num_actions
     v = tf.convert_to_tensor(v)
 
@@ -52,7 +52,7 @@ def primal_state_value_policy_evaluation(transitions,
                                          max_num_iterations=-1,
                                          v_0=None):
     transitions = tf.convert_to_tensor(transitions)
-    num_states = transitions.shape[0].value
+    num_states = transitions.shape[0]
 
     if v_0 is None:
         v_0 = tf.zeros([num_states])
@@ -112,7 +112,7 @@ def generalized_policy_iteration_op(transitions,
             v_0=v_0)
 
     transitions = tf.convert_to_tensor(transitions)
-    num_states = transitions.shape[0].value
+    num_states = transitions.shape[0]
 
     if v_0 is None:
         v_0 = tf.zeros([num_states])
@@ -148,9 +148,9 @@ def state_successor_policy_evaluation_op(transitions, policy, gamma=0.9):
     negative_state_to_state = tf.einsum('san,sa->sn', transitions,
                                         -gamma * policy)
     eye_minus_gamma_state_to_state = tf.linalg.set_diag(
-        negative_state_to_state, 1.0 + tf.diag_part(negative_state_to_state))
+        negative_state_to_state, 1.0 + tf.linalg.diag_part(negative_state_to_state))
 
-    return tf.matrix_inverse(eye_minus_gamma_state_to_state)
+    return tf.linalg.inv(eye_minus_gamma_state_to_state)
 
 
 def state_distribution(state_successor_rep, state_probs):

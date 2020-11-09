@@ -10,7 +10,7 @@ def weighted_random_shuffle(weights, k=None):
     if k is None: k = weights.shape[0]
     adjusted_weights = tf.where(
         tf.greater(weights, 0.0),
-        tf.log(tf.random_uniform(weights.shape)) / weights,
+        tf.log(tf.random.uniform(weights.shape)) / weights,
         tf.constant(float('-inf'), shape=weights.shape))
     values, indices = tf.nn.top_k(adjusted_weights, k=k)
     return indices

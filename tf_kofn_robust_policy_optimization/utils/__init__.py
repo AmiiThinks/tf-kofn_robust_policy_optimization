@@ -42,8 +42,8 @@ def means(*tensors, n=1):
 
 
 def num_actions(transitions):
-    return transitions.shape[1].value
+    return transitions.shape[1]
 
 
 def num_states(transitions):
-    return transitions.shape[0].value
+    return transitions.shape[0]

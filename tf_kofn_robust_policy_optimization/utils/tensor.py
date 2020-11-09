@@ -13,7 +13,7 @@ def standardize_batch_dim(*tensors_with_ndims):
 
     if has_batch_dim:
         batch_sizes = [
-            t.shape[0].value if has_batch_dim_list[i] else 1
+            t.shape[0] if has_batch_dim_list[i] else 1
             for i, (t, _) in enumerate(tensors_with_ndims)
         ]
         max_batch_size = max(batch_sizes)
@@ -45,7 +45,7 @@ def matrix_to_block_matrix_op(A):
     Returns an n x (n * m) block diagonal matrix that results from offseting
     each row in A by the number of columns of A.
     '''
-    n = A.shape[0].value
+    n = A.shape[0]
     tiled_A = tf.tile(A, [1, n])
-    mask = tf.constant(block_ones(n, A.shape[1].value))
+    mask = tf.constant(block_ones(n, A.shape[1]))
     return tiled_A * mask

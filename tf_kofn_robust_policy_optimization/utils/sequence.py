@@ -33,8 +33,8 @@ def num_pr_sequences_at_timestep(t, num_states, num_actions):
 def static_size(tensor):
     p = 1
     for i in range(len(tensor.shape)):
-        if tensor.shape[i].value is not None and tensor.shape[i].value > 0:
-            p *= tensor.shape[i].value
+        if tensor.shape[i] is not None and tensor.shape[i] > 0:
+            p *= tensor.shape[i]
     return p
 
 
@@ -57,10 +57,10 @@ def prob_sequence_state_and_action(prob_sequence_action_state,
     '''
     if strat is None:
         if num_actions is None:
-            num_actions = prob_sequence_action_state.shape[-2].value
+            num_actions = prob_sequence_action_state.shape[-2]
         strat = tf.ones((static_size(prob_sequence_action_state), num_actions))
     else:
-        num_actions = strat.shape[-1].value
+        num_actions = strat.shape[-1]
     prob_tensor = prob_state_and_action(
         tf.reshape(
             prob_sequence_action_state,
@@ -74,9 +74,9 @@ def prob_sequence_state_and_action(prob_sequence_action_state,
         shape=(
             int(
                 static_size(prob_tensor) /
-                (prob_sequence_action_state.shape[-1].value * num_actions)
+                (prob_sequence_action_state.shape[-1] * num_actions)
             ),
-            prob_sequence_action_state.shape[-1].value,
+            prob_sequence_action_state.shape[-1],
             num_actions
         )
     )  # yapf:disable

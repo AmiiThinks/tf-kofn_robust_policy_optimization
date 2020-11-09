@@ -279,7 +279,7 @@ class Gridworld(object):
             self.__class__.cardinal_direction_transformations())
         row_movement = movement[:, 0]
         column_movement = movement[:, 1]
-        num_actions = row_movement.shape[0].value
+        num_actions = row_movement.shape[0]
         for row in range(self.num_rows):
             for column in range(self.num_columns):
                 if (sink is not None and sink[0] == row and sink[1] == column):

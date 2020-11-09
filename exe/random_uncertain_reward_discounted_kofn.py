@@ -48,7 +48,7 @@ unknown_reward_positions = 1 - known_reward_positions
 
 reward_models_op = tf.squeeze(
     tf.stack(
-        [(tf.random_normal(stddev=1000, shape=[num_states * num_actions, 1]) *
+        [(tf.random.normal(stddev=1000, shape=[num_states * num_actions, 1]) *
           unknown_reward_positions) + known_rewards
          for _ in range(num_sampled_mdps)],
         axis=1))
@@ -107,10 +107,10 @@ class KofnConfig(object):
 class UncertainRewardKOfNMethod(object):
     def __init__(self, config, root_op, transition_model_op, reward_models_op,
                  gamma):
-        if reward_models_op.shape[1].value != config.num_sampled_mdps():
-            print(reward_models_op.shape[1].value)
+        if reward_models_op.shape[1] != config.num_sampled_mdps():
+            print(reward_models_op.shape[1])
             print(config.num_sampled_mdps())
-        assert reward_models_op.shape[1].value == config.num_sampled_mdps()
+        assert reward_models_op.shape[1] == config.num_sampled_mdps()
         self.config = config
         self.root_op = root_op
         self.transition_model_op = transition_model_op
@@ -128,8 +128,8 @@ class UncertainRewardKOfNMethod(object):
                 gamma=gamma))
 
         assert (len(self.evs_op.shape) == 2)
-        assert (self.evs_op.shape[0].value == reward_models_op.shape[1].value)
-        assert (self.evs_op.shape[1].value == 1)
+        assert (self.evs_op.shape[0] == reward_models_op.shape[1])
+        assert (self.evs_op.shape[1] == 1)
 
         self.mdp_weights_op = self.config.mdp_weights_op(self.evs_op)
 
@@ -159,10 +159,10 @@ class UncertainRewardKOfNMethod(object):
         self.update_op = tf.assign(self.q_regrets_op, next_q_regrets)
 
     def num_states(self):
-        return self.root_op.shape[0].value
+        return self.root_op.shape[0]
 
     def num_actions(self):
-        return int(self.transition_model_op.shape[0].value / self.num_states())
+        return int(self.transition_model_op.shape[0] / self.num_states())
 
     def name(self):
         return self.config.name()
@@ -215,7 +215,7 @@ def train_and_save_kofn(*methods):
     # TODO
     # if 'num_sequences' not in final_data:
     #     final_data['num_sequences'] = (
-    #         q_regrets_op.shape[0].value * q_regrets_op.shape[1].value)
+    #         q_regrets_op.shape[0] * q_regrets_op.shape[1])
     for i in range(len(methods)):
         method_data[methods[i].name()] = {
             'training': {

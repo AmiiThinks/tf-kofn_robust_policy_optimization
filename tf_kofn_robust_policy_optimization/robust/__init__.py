@@ -17,7 +17,7 @@ def prob_ith_element_is_in_k_subset(n_weights, k_weights):
     n_prob = l1_projection_to_simplex(n_weights)
     w_n_bar = tf.cumsum(k_weights)
     a = n_prob / w_n_bar
-    a = tf.where(tf.is_nan(a), tf.zeros_like(a), a)
+    a = tf.where(tf.math.is_nan(a), tf.zeros_like(a), a)
     w_i_minus_one_bar = tf.cumsum(k_weights, exclusive=True)
     b = w_i_minus_one_bar * tf.cumsum(a, reverse=True)
     return 1.0 - (tf.cumsum(n_prob, exclusive=True) + b)
@@ -36,18 +36,15 @@ def prob_ith_element_is_sampled(n_weights, k_weights):
 def rank_to_element_weights(rank_weights, elements):
     rank_weights = tf.squeeze(tf.convert_to_tensor(rank_weights))
     elements = tf.convert_to_tensor(elements)
-    _, ranked_indices = tf.nn.top_k(
-        -elements, elements.shape[-1].value, sorted=True)
+    _, ranked_indices = tf.nn.top_k(-elements, elements.shape[-1], sorted=True)
     if len(elements.shape) < 2:
-        return tf.manip.scatter_nd(
-            tf.expand_dims(ranked_indices, axis=-1), rank_weights,
-            rank_weights.shape)
+        return tf.scatter_nd(tf.expand_dims(ranked_indices, axis=-1),
+                             rank_weights, rank_weights.shape)
     else:
         return tf.stack([
-            tf.manip.scatter_nd(
-                tf.expand_dims(ranked_indices[i], axis=-1),
-                rank_weights, rank_weights.shape)
-            for i in range(ranked_indices.shape[0].value)
+            tf.scatter_nd(tf.expand_dims(ranked_indices[i], axis=-1),
+                          rank_weights, rank_weights.shape)
+            for i in range(ranked_indices.shape[0])
         ])
 
 
@@ -59,13 +56,12 @@ def world_weights(n_weights, k_weights, evs):
 def world_utilities(utility_of_world_given_action, strategy, n_weights,
                     k_weights):
     evs = tf.matmul(strategy, utility_of_world_given_action, transpose_a=True)
-    p = tf.expand_dims(
-        world_weights(n_weights, k_weights, tf.squeeze(evs)), axis=1)
+    p = tf.expand_dims(world_weights(n_weights, k_weights, tf.squeeze(evs)),
+                       axis=1)
     return tf.matmul(utility_of_world_given_action, p)
 
 
 def deterministic_kofn_weights(k, n):
-    return tf.scatter_nd(
-        tf.expand_dims(tf.range(k), axis=1),
-        tf.constant(1.0 / k, shape=[k]),
-        shape=[n])
+    return tf.scatter_nd(tf.expand_dims(tf.range(k), axis=1),
+                         tf.constant(1.0 / k, shape=[k]),
+                         shape=[n])

@@ -12,7 +12,7 @@ from tf_kofn_robust_policy_optimization.pr_mdp import \
 
 class KofnTest(tf.test.TestCase):
     def setUp(self):
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
         np.random.seed(42)
 
     def test_bind(self):

@@ -18,14 +18,14 @@ from tf_contextual_prediction_with_expert_advice import \
 class DiscountedMdpTest(tf.test.TestCase):
     def setUp(self):
         np.random.seed(10)
-        tf.set_random_seed(10)
+        tf.random.set_seed(10)
 
     def test_situation_dependent_discount(self):
         num_states = 3
         num_actions = 2
         transitions = tf.reshape(
             l1_projection_to_simplex(
-                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                tf.random.normal(shape=[num_states * num_actions, num_states]),
                 axis=1
             ),
             [num_states, num_actions, num_states]
@@ -64,13 +64,13 @@ class DiscountedMdpTest(tf.test.TestCase):
         num_actions = 2
         transitions = tf.reshape(
             l1_projection_to_simplex(
-                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                tf.random.normal(shape=[num_states * num_actions, num_states]),
                 axis=1
             ),
             [num_states, num_actions, num_states]
         )  # yapf:disable
         policy = l1_projection_to_simplex(
-            tf.random_normal([num_states, num_actions]), axis=1)
+            tf.random.normal([num_states, num_actions]), axis=1)
 
         def run_test(gamma):
             patient = state_successor_policy_evaluation_op(
@@ -85,7 +85,7 @@ class DiscountedMdpTest(tf.test.TestCase):
             with self.subTest('values without batch dimension'):
                 threshold = 1e-10
                 max_num_iterations = -1
-                r = tf.random_normal(shape=[num_states, num_actions])
+                r = tf.random.normal(shape=[num_states, num_actions])
 
                 q = primal_action_value_policy_evaluation_op(
                     transitions,
@@ -113,7 +113,7 @@ class DiscountedMdpTest(tf.test.TestCase):
                 threshold = 1e-10
                 max_num_iterations = -1
                 batch_size = 2
-                r = tf.random_normal(
+                r = tf.random.normal(
                     shape=[batch_size, num_states, num_actions])
 
                 v = tf.reduce_sum(
@@ -154,13 +154,13 @@ class DiscountedMdpTest(tf.test.TestCase):
 
         transitions = tf.reshape(
             l1_projection_to_simplex(
-                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                tf.random.normal(shape=[num_states * num_actions, num_states]),
                 axis=1
             ),
             [num_states, num_actions, num_states]
         )  # yapf:disable
 
-        r = tf.random_normal(shape=[num_states, num_actions])
+        r = tf.random.normal(shape=[num_states, num_actions])
 
         policy = normalized(tf.ones([num_states, num_actions]), axis=1)
 
@@ -178,7 +178,7 @@ class DiscountedMdpTest(tf.test.TestCase):
 
         with self.subTest('two reward functions'):
             r_both = tf.stack(
-                [r, tf.random_normal(shape=[num_states, num_actions])], axis=0)
+                [r, tf.random.normal(shape=[num_states, num_actions])], axis=0)
 
             patient = dual_action_value_policy_evaluation_op(
                 transitions, policy, r_both, gamma=gamma)
@@ -209,13 +209,13 @@ class DiscountedMdpTest(tf.test.TestCase):
 
         transitions = tf.reshape(
             l1_projection_to_simplex(
-                tf.random_normal(shape=[num_states * num_actions, num_states]),
+                tf.random.normal(shape=[num_states * num_actions, num_states]),
                 axis=1
             ),
             [num_states, num_actions, num_states]
         )  # yapf:disable
 
-        r = tf.random_normal(shape=[num_states, num_actions])
+        r = tf.random.normal(shape=[num_states, num_actions])
 
         policy_1_op = generalized_policy_iteration_op(
             transitions,

@@ -7,11 +7,11 @@ setup(
     packages=find_packages(),
     install_requires=[
         'setuptools >= 20.2.2',
-        # tensorflow or tensorflow-gpu >= v1.8
+        'tensorflow >= 2.0',
         'fire',
         'numpy',
         'scipy',  # For environments/inventory.
-        'deprecation'
+        'deprecation',
     ],
     tests_require=['pytest', 'pytest-cov'],
     setup_requires=['pytest-runner'],

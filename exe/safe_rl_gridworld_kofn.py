@@ -89,7 +89,7 @@ with setup_timer:
             known_rewards_op + gridworld.cardinal_reward_model_op(
                 unknown_reward_positions,
                 [
-                    tf.random_normal(stddev=uncertainty_std, shape=[])
+                    tf.random.normal(stddev=uncertainty_std, shape=[])
                     for _ in unknown_reward_positions
                 ],
                 sink=goal

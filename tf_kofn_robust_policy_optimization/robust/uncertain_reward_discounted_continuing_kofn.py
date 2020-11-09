@@ -51,19 +51,19 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
 
         self.gamma = gamma
 
-        assert (self.reward_models_op.shape[self.world_idx].value ==
+        assert (self.reward_models_op.shape[self.world_idx] ==
                 self.num_worlds())
 
-        assert (self.reward_models_op.shape[self.state_idx].value ==
+        assert (self.reward_models_op.shape[self.state_idx] ==
                 self.num_states())
-        assert (self.transition_model_op.shape[self.state_idx].value ==
+        assert (self.transition_model_op.shape[self.state_idx] ==
                 self.num_states())
-        assert (self.transition_model_op.shape[self.successor_state_idx].value
+        assert (self.transition_model_op.shape[self.successor_state_idx]
                 == self.num_states())
 
-        assert (self.reward_models_op.shape[self.action_idx].value ==
+        assert (self.reward_models_op.shape[self.action_idx] ==
                 self.num_actions())
-        assert (self.transition_model_op.shape[self.action_idx].value ==
+        assert (self.transition_model_op.shape[self.action_idx] ==
                 self.num_actions())
 
     @cache
@@ -75,10 +75,10 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
                 tf.transpose(self.reward_models_op, [2, 0, 1]),
                 gamma=self.gamma), [1, 2, 0])
 
-        assert (action_values.shape[self.state_idx].value == self.num_states())
+        assert (action_values.shape[self.state_idx] == self.num_states())
         assert (
-            action_values.shape[self.action_idx].value == self.num_actions())
-        assert (action_values.shape[self.world_idx].value == self.num_worlds())
+            action_values.shape[self.action_idx] == self.num_actions())
+        assert (action_values.shape[self.world_idx] == self.num_worlds())
 
         return action_values
 
@@ -109,13 +109,13 @@ class UncertainRewardDiscountedContinuingKofnGame(object):
         return self.contextual_kofn_game.kofn_utility
 
     def num_states(self):
-        return self.root_op.shape[self.state_idx].value
+        return self.root_op.shape[self.state_idx]
 
     def num_actions(self):
-        return self.policy.shape[self.action_idx].value
+        return self.policy.shape[self.action_idx]
 
     def num_worlds(self):
-        return self.mixture_constraint_weights.shape[0].value
+        return self.mixture_constraint_weights.shape[0]
 
 
 class UncertainRewardDiscountedContinuingKofnEvEnv(object):

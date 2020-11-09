@@ -46,7 +46,7 @@ with mdp_generator_timer:
     transition_models = [
         g.transitions(
             *g.fraction_of_max_inventory_gaussian_demand(
-                tf.random_uniform([], minval=0.0, maxval=1.0)
+                tf.random.uniform([], minval=0.0, maxval=1.0)
             )
         ) for _ in range(num_sampled_mdps)
     ]
@@ -145,8 +145,8 @@ def train_and_save_kofn(i):
 
     if 'num_sequences' not in final_data:
         final_data['num_sequences'] = (
-            rm_plus.regrets.shape[0].value *
-            rm_plus.regrets.shape[1].value
+            rm_plus.regrets.shape[0] *
+            rm_plus.regrets.shape[1]
         )
     d['training'] = {
         'evs': training_evs,

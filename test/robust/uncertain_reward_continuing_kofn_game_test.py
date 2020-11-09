@@ -10,7 +10,7 @@ from tf_contextual_prediction_with_expert_advice import normalized
 
 class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
     def setUp(self):
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
 
     def test_init(self):
         num_worlds = 3
@@ -18,18 +18,18 @@ class UncertainRewardDiscountedContinuingKofnGameTest(tf.test.TestCase):
         num_actions = 2
 
         mixture_constraint_weights = normalized(
-            tf.random_uniform([num_worlds]))
+            tf.random.uniform([num_worlds]))
 
         self.assertAllClose(
             [0.4556628465652466, 0.30238017439842224, 0.24195699393749237],
             mixture_constraint_weights)
 
-        root_probs = normalized(tf.random_uniform([num_states]))
+        root_probs = normalized(tf.random.uniform([num_states]))
         transition_model = normalized(
-            tf.random_uniform([num_states, num_actions, num_states]), axis=2)
-        reward_models = tf.random_normal(
+            tf.random.uniform([num_states, num_actions, num_states]), axis=2)
+        reward_models = tf.random.normal(
             shape=[num_states, num_actions, num_worlds])
-        policy = normalized(tf.random_uniform([num_states, num_actions]))
+        policy = normalized(tf.random.uniform([num_states, num_actions]))
         discount = 0.99
 
         patient = UncertainRewardDiscountedContinuingKofnGame(

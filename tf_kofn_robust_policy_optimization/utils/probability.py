@@ -29,7 +29,7 @@ def prob_state_and_action(state_distribution, strat=None, num_actions=None):
         each action under strategy `strat`.
     '''
     if strat is None:
-        strat = tf.ones((state_distribution.shape[0].value, num_actions))
+        strat = tf.ones((state_distribution.shape[0], num_actions))
     return tf.transpose(tf.transpose(strat) * state_distribution)
 
 
@@ -73,7 +73,7 @@ def prob_next_state_given_action(transition_model,
                 prob_state_given_action(
                     state_distribution,
                     strat=strat,
-                    num_actions=transition_model.shape[1].value
+                    num_actions=transition_model.shape[1]
                 )
             ),
             axis=2
@@ -87,7 +87,7 @@ def prob_next_state(transition_model, state_distribution, strat=None):
         prob_state_and_action(
             state_distribution,
             strat=strat,
-            num_actions=transition_model.shape[1].value
+            num_actions=transition_model.shape[1]
         ),
         axes=((0, 1), (0, 1))
     )  # yapf:disable

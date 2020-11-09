@@ -16,7 +16,7 @@ from tf_contextual_prediction_with_expert_advice import \
 class PrMdpTest(tf.test.TestCase):
     def setUp(self):
         np.random.seed(42)
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
 
     def test_update(self):
         horizon = 2

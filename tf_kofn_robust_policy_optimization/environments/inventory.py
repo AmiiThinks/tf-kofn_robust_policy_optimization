@@ -86,7 +86,7 @@ class InventoryMdpGenerator(object):
 
     def root(self):
         return l1_projection_to_simplex(
-            tf.random_uniform((self.num_states(), )))
+            tf.random.uniform((self.num_states(), )))
 
     def rewards(self):
         if self.cache is None:

@@ -12,7 +12,7 @@ from tf_kofn_robust_policy_optimization.robust.contextual_kofn import \
 
 class ContextualKofnTest(tf.test.TestCase):
     def setUp(self):
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
         np.random.seed(42)
 
     def test_1_of_5_game_utilties(self):
@@ -120,9 +120,9 @@ class ContextualKofnTest(tf.test.TestCase):
                 utility_of_instance_given_action, strategies).kofn_utility
 
             assert len(kofn_utility.shape) == 3
-            assert kofn_utility.shape[0].value == 2
-            assert kofn_utility.shape[1].value == 1
-            assert kofn_utility.shape[2].value == num_actions
+            assert kofn_utility.shape[0] == 2
+            assert kofn_utility.shape[1] == 1
+            assert kofn_utility.shape[2] == num_actions
 
             utilities = tf.reduce_mean(kofn_utility, axis=1)
 
@@ -159,9 +159,9 @@ class ContextualKofnTest(tf.test.TestCase):
                 utility_of_instance_given_action, strategy).kofn_utility
 
             assert len(kofn_utility.shape) == 3
-            assert kofn_utility.shape[0].value == 2
-            assert kofn_utility.shape[1].value == 1
-            assert kofn_utility.shape[2].value == num_actions
+            assert kofn_utility.shape[0] == 2
+            assert kofn_utility.shape[1] == 1
+            assert kofn_utility.shape[2] == num_actions
 
             utilities = tf.reduce_mean(kofn_utility, axis=1)
 
@@ -198,9 +198,9 @@ class ContextualKofnTest(tf.test.TestCase):
                 utility_of_instance_given_action, strategy).kofn_utility
 
             assert len(kofn_utility.shape) == 3
-            assert kofn_utility.shape[0].value == 2
-            assert kofn_utility.shape[1].value == 1
-            assert kofn_utility.shape[2].value == num_actions
+            assert kofn_utility.shape[0] == 2
+            assert kofn_utility.shape[1] == 1
+            assert kofn_utility.shape[2] == num_actions
 
             utilities = tf.reduce_mean(kofn_utility, axis=1)
 

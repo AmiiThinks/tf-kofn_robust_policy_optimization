@@ -15,7 +15,7 @@ from tf_kofn_robust_policy_optimization.pr_mdp import pr_mdp_rollout, pr_mdp_exp
 class RegretTableTest(tf.test.TestCase):
     def setUp(self):
         np.random.seed(42)
-        tf.set_random_seed(42)
+        tf.random.set_seed(42)
 
     def test_new_ir_table(self):
         horizon = 3
@@ -24,9 +24,8 @@ class RegretTableTest(tf.test.TestCase):
 
         patient = RegretTable.new_ir_table(horizon, num_states, num_actions)
 
-        self.assertAllEqual(
-            tf.zeros((horizon * num_states, num_actions)),
-            tf.convert_to_tensor(patient))
+        self.assertAllEqual(tf.zeros((horizon * num_states, num_actions)),
+                            tf.convert_to_tensor(patient))
 
     def test_sequences_at_timestep_ir(self):
         horizon = 3
@@ -34,17 +33,16 @@ class RegretTableTest(tf.test.TestCase):
         num_actions = 10
         regrets = RegretTable.new_ir_table(horizon, num_states, num_actions)
 
-        self.assertEqual(horizon * num_states, regrets.shape[0].value)
-        self.assertEqual(num_actions, regrets.shape[1].value)
+        self.assertEqual(horizon * num_states, regrets.shape[0])
+        self.assertEqual(num_actions, regrets.shape[1])
 
         for t in range(horizon):
             patient = RegretTable.sequences_at_timestep_ir(
                 regrets, t, num_states)
-            self.assertEqual(num_states, patient.shape[0].value)
-            self.assertEqual(num_actions, patient.shape[1].value)
-            self.assertAllEqual(
-                tf.zeros((num_states, num_actions)),
-                tf.convert_to_tensor(patient))
+            self.assertEqual(num_states, patient.shape[0])
+            self.assertEqual(num_actions, patient.shape[1])
+            self.assertAllEqual(tf.zeros((num_states, num_actions)),
+                                tf.convert_to_tensor(patient))
 
     def test_update_regrets_at_timestep_ir(self):
         horizon = 3
@@ -53,8 +51,8 @@ class RegretTableTest(tf.test.TestCase):
 
         regrets = RegretTable.new_ir_table(horizon, num_states, num_actions)
 
-        self.assertEqual(horizon * num_states, regrets.shape[0].value)
-        self.assertEqual(num_actions, regrets.shape[1].value)
+        self.assertEqual(horizon * num_states, regrets.shape[0])
+        self.assertEqual(num_actions, regrets.shape[1])
 
         updated_t = 1
         updated_regrets = RegretTable.update_regrets_at_timestep_ir(
@@ -62,21 +60,19 @@ class RegretTableTest(tf.test.TestCase):
             updated_t,
             num_states,
             tf.ones((num_states, num_actions)))  # yapf:disable
-        self.assertEqual(horizon * num_states, updated_regrets.shape[0].value)
+        self.assertEqual(horizon * num_states, updated_regrets.shape[0])
 
         for t in range(horizon):
             patient = RegretTable.sequences_at_timestep_ir(
                 regrets, t, num_states)
-            self.assertEqual(num_states, patient.shape[0].value)
-            self.assertEqual(num_actions, patient.shape[1].value)
+            self.assertEqual(num_states, patient.shape[0])
+            self.assertEqual(num_actions, patient.shape[1])
             if t == updated_t:
-                self.assertAllEqual(
-                    tf.ones((num_states, num_actions)),
-                    tf.convert_to_tensor(patient))
+                self.assertAllEqual(tf.ones((num_states, num_actions)),
+                                    tf.convert_to_tensor(patient))
             else:
-                self.assertAllEqual(
-                    tf.zeros((num_states, num_actions)),
-                    tf.convert_to_tensor(patient))
+                self.assertAllEqual(tf.zeros((num_states, num_actions)),
+                                    tf.convert_to_tensor(patient))
 
     def test_new_pr_table(self):
         horizon = 3
@@ -85,13 +81,12 @@ class RegretTableTest(tf.test.TestCase):
 
         patient = RegretTable.new_pr_table(horizon, num_states, num_actions)
 
-        num_sequences = (num_states *
-                         ((num_states * num_actions)**horizon - 1) /
-                         (num_states * num_actions - 1))
+        num_sequences = int(num_states *
+                            ((num_states * num_actions)**horizon - 1) /
+                            (num_states * num_actions - 1))
 
-        self.assertAllEqual(
-            tf.zeros((num_sequences, num_actions)),
-            tf.convert_to_tensor(patient))
+        self.assertAllEqual(tf.zeros((num_sequences, num_actions)),
+                            tf.convert_to_tensor(patient))
 
     def test_sequences_at_timestep_pr(self):
         horizon = 3
@@ -101,24 +96,23 @@ class RegretTableTest(tf.test.TestCase):
 
         def num_sequences(t):
             if t < 0: return 0
-            return (
+            return int(
                 num_states * ((num_states * num_actions)**(t + 1) - 1)
                 / (num_states * num_actions - 1)
             )  # yapf:disable
 
-        self.assertEqual(num_sequences(horizon - 1), regrets.shape[0].value)
-        self.assertEqual(num_actions, regrets.shape[1].value)
+        self.assertEqual(num_sequences(horizon - 1), regrets.shape[0])
+        self.assertEqual(num_actions, regrets.shape[1])
 
         for t in range(horizon):
             patient = RegretTable.sequences_at_timestep_pr(
                 regrets, t, num_states, num_actions)
             self.assertEqual(
-                num_sequences(t) - num_sequences(t - 1),
-                patient.shape[0].value)
-            self.assertEqual(num_actions, patient.shape[1].value)
+                num_sequences(t) - num_sequences(t - 1), patient.shape[0])
+            self.assertEqual(num_actions, patient.shape[1])
 
-            x = tf.zeros((num_sequences(t) - num_sequences(t - 1),
-                          num_actions))
+            x = tf.zeros(
+                (num_sequences(t) - num_sequences(t - 1), num_actions))
             self.assertAllEqual(x, tf.convert_to_tensor(patient))
 
     def test_update_regrets_at_timestep_pr(self):
@@ -131,29 +125,27 @@ class RegretTableTest(tf.test.TestCase):
         def num_sequences(t):
             if t < 0: return 0
             num_state_action_pairs = num_states * num_actions
-            return (
+            return int(
                 num_states * (num_state_action_pairs**(t + 1) - 1)
                 / (num_state_action_pairs - 1)
             )  # yapf:disable
 
-        self.assertEqual(num_sequences(horizon - 1), regrets.shape[0].value)
-        self.assertEqual(num_actions, regrets.shape[1].value)
+        self.assertEqual(num_sequences(horizon - 1), regrets.shape[0])
+        self.assertEqual(num_actions, regrets.shape[1])
 
         updated_t = 2
         updated_regrets = (RegretTable.update_regrets_at_timestep_pr(
             regrets, updated_t, num_states, num_actions,
             tf.ones((num_sequences(updated_t) - num_sequences(updated_t - 1),
                      num_actions))))
-        self.assertEqual(
-            num_sequences(horizon - 1), updated_regrets.shape[0].value)
+        self.assertEqual(num_sequences(horizon - 1), updated_regrets.shape[0])
 
         for t in range(horizon):
             patient = RegretTable.sequences_at_timestep_pr(
                 regrets, t, num_states, num_actions)
             self.assertEqual(
-                num_sequences(t) - num_sequences(t - 1),
-                patient.shape[0].value)
-            self.assertEqual(num_actions, patient.shape[1].value)
+                num_sequences(t) - num_sequences(t - 1), patient.shape[0])
+            self.assertEqual(num_actions, patient.shape[1])
 
             if t == updated_t:
                 self.assertAllEqual(

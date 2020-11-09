@@ -7,7 +7,7 @@ from .utils.sequence import num_pr_prefixes, \
 def pr_mdp_rollout(horizon, root, transitions):
     sequence_blocks = [
         prob_next_sequence_state_action_and_next_state(
-            transitions, tf.reshape(root, (1, 1, root.shape[0].value)))
+            transitions, tf.reshape(root, (1, 1, root.shape[0])))
     ]
     for _ in range(horizon - 1):
         sequence_blocks.append(
@@ -75,13 +75,13 @@ def pr_mdp_optimal_policy_and_value(horizon, num_states, num_actions,
             tf.argmax(
                 tf.reshape(current_cf_action_values,
                            (num_sequences * num_states,
-                            current_cf_action_values.shape[-1].value)),
+                            current_cf_action_values.shape[-1])),
                 axis=1),
-            dim=1)
+            axis=1)
         scatter_indices = tf.concat(
             [
                 tf.expand_dims(
-                    tf.range(br_indices.shape[0].value, dtype=tf.int64),
+                    tf.range(br_indices.shape[0], dtype=tf.int64),
                     axis=1), br_indices
             ],
             axis=1)
